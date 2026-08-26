@@ -1,0 +1,13 @@
+{
+  "name": "",
+  "description": "",
+  "version": 2,
+  "engine": "Crayon Game Builder",
+  "renderer": "Three.js 0.184.0",
+  "physics": "Rapier 0.12.0",
+  "generatedAt": "2026-08-26T10:53:21.650Z",
+  "platforms": [
+    "Web"
+  ],
+  "controls": "Keyboard / Touch"
+}
