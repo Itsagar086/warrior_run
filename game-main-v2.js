@@ -80,9 +80,10 @@ export function makeRoadsideShrine() {
 }
 // ===== END ASSET =====
 
-// Register factories
+// Pull asset factories registered by game-assets-v2.js into local scope
 window.__game = window.__game || {};
-window.__game.factories = {
+window.__game.factories = window.__game.factories || {};
+const {
   makePlayer,
   makeGroundSegment,
   makePillarObstacle,
@@ -95,9 +96,18 @@ window.__game.factories = {
   makeOmGlyph,
   makePowerOrb,
   makeRivalNaga,
-  makeMountKailash,
-  makeRoadsideShrine
-};
+} = window.__game.factories;
+
+// Register local scenery factories
+window.__game.factories.makeMountKailash = makeMountKailash;
+window.__game.factories.makeRoadsideShrine = makeRoadsideShrine;
+
+
+// Pull state & config from game-state-v2.js
+const { CONFIG, state } = window.__game;
+
+// Pull UI functions from game-ui-v2.js
+const { initUI, updateHUD, showBanner, showGameOver, showSplash } = window.__game.ui;
 
 // 4) UI functions
 // ===== SYSTEM id=system-fx label="Reward and Combat FX Pool" =====
@@ -606,17 +616,47 @@ window.addEventListener('touchend', (e) => {
 let nextObstacleDist = 20;
 let nextCollectibleDist = 8;
 let nextPowerOrbDist = 80;
+let lastAsuraDist = 0;
+let lastBrokenRoadDist = 0;
+let lastEvilSoulDist = 0;
 
 function spawnObstacleAt(z) {
-  const freeObs = obstaclePool.find(o => !o.visible);
+  const dist = state.distance;
+  const eligibleTypes = ['firePit', 'pillar', 'boulder'];
+
+  if (dist >= 150) eligibleTypes.push('evilSoul');
+  if (dist >= 200) eligibleTypes.push('asura');
+  if (dist >= 300) eligibleTypes.push('brokenRoad');
+
+  // Priority check to guarantee consistent interval appearance
+  let chosenType = null;
+  if (dist >= 200 && (dist - lastAsuraDist) >= 140) {
+    chosenType = 'asura';
+  } else if (dist >= 300 && (dist - lastBrokenRoadDist) >= 250) {
+    chosenType = 'brokenRoad';
+  } else if (dist >= 150 && (dist - lastEvilSoulDist) >= 150) {
+    chosenType = 'evilSoul';
+  } else {
+    chosenType = eligibleTypes[Math.floor(Math.random() * eligibleTypes.length)];
+  }
+
+  let freeObs = obstaclePool.find(o => !o.visible && o.userData.obstacleType === chosenType);
+  if (!freeObs) {
+    freeObs = obstaclePool.find(o => !o.visible && eligibleTypes.includes(o.userData.obstacleType));
+  }
   if (!freeObs) return;
+
+  const type = freeObs.userData.obstacleType;
+  if (type === 'asura') lastAsuraDist = dist;
+  if (type === 'brokenRoad') lastBrokenRoadDist = dist;
+  if (type === 'evilSoul') lastEvilSoulDist = dist;
 
   const chosenLane = Math.floor(Math.random() * 3);
   const laneX = CONFIG.LANES[chosenLane];
 
   freeObs.position.set(laneX, CONFIG.SURFACE_Y, z);
   freeObs.visible = true;
-  if (freeObs.userData.obstacleType === 'evilSoul') {
+  if (type === 'evilSoul') {
     freeObs.userData.soulBaseX = laneX;
     freeObs.userData.soulTime = 0;
   }
@@ -855,10 +895,25 @@ function updateSimulation(dt) {
       if (oType === 'asura') {
         // Asuras run toward the player from ahead
         obs.position.z += scrollDelta + 6.0 * dt;
+        // Running stride animation for Asura legs & arms
+        const time = clock.getElapsedTime();
+        const stride = Math.sin(time * 8.0);
+        const armStride = Math.sin(time * 8.0 + Math.PI);
+        const legL = obs.getObjectByName('legL') || obs.children[8];
+        const legR = obs.getObjectByName('legR') || obs.children[9];
+        const armL = obs.getObjectByName('armL') || obs.children[6];
+        const armR = obs.getObjectByName('armR') || obs.children[7];
+        if (legL) legL.rotation.x = stride * 0.6;
+        if (legR) legR.rotation.x = -stride * 0.6;
+        if (armL) armL.rotation.x = armStride * 0.6;
+        if (armR) armR.rotation.x = -armStride * 0.6;
       } else if (oType === 'evilSoul') {
         obs.position.z += scrollDelta;
-        obs.userData.soulTime = (obs.userData.soulTime || 0) + dt * 2.5;
-        obs.position.x = (obs.userData.soulBaseX || 0) + Math.sin(obs.userData.soulTime) * 1.8;
+        const time = clock.getElapsedTime();
+        const laneW = CONFIG.LANE_WIDTH || 2.2;
+        // Lateral sine drift across lanes AND vertical bobbing
+        obs.position.x = (obs.userData.soulBaseX || 0) + Math.sin(time * 1.5) * (laneW * 0.5);
+        obs.position.y = 0.3 + Math.sin(time * 3.0) * 0.3;
       } else {
         obs.position.z += scrollDelta;
       }
@@ -894,12 +949,11 @@ function updateSimulation(dt) {
         }
 
         // FIRE PIT JUMP COLLISION FIX:
-        // Fire pits are low ground hazards. If player is jumped above 0.35m height, clean pass!
         if (oType === 'firePit' && state.playerY >= 0.35) {
           continue;
         }
 
-        // Broken road: cleared if player is cleanly airborne across gap
+        // Broken road gap check: playerY >= 0.5 survives airborne, ground loses life
         if (oType === 'brokenRoad' && state.playerY >= 0.5) {
           continue;
         }
@@ -924,15 +978,16 @@ function updateSimulation(dt) {
         const zone = obs.userData.zone || 1;
 
         if (zone === 2 && state.lives > 1) {
-          // Zone 2 Obstacle: First hit gives warning & costs 1 life
+          // Zone 2 Obstacle: First touch costs 1 life + 1.5s invincibility/stumble timer
           state.lives--;
-          state.stumbleTimer = 1.5; // brief invulnerability & flash
+          state.stumbleTimer = 1.5;
           obs.visible = false;
           playSound('blast');
           spawnFX(player.position, '#ff8c2e', 20);
-          showBanner('⚠️ ZONE 2 HAZARD HIT! 1 LIFE REMAINING! ⚠️', 2.0);
+          showBanner(`⚠️ ZONE 2 HAZARD HIT! ${state.lives} LIVES REMAINING! ⚠️`, 2.0);
         } else {
           // Zone 1 Hazard OR final life lost in Zone 2 -> Game Over
+          state.lives = 0;
           state.phase = 'gameOver';
           playSound('blast');
           spawnFX(player.position, '#ff4500', 30);
@@ -1071,7 +1126,7 @@ function updateSimulation(dt) {
   }
 
   // Update HUD
-  updateHUD(state.punya, state.distance, state.shakti, state.activePower, state.combo);
+  updateHUD(state.punya, state.distance, state.shakti, state.activePower, state.combo, state.lives);
 }
 // ===== END SYSTEM =====
 
@@ -1081,7 +1136,7 @@ window.__startGame = function() {
   state.score = 0;
   state.punya = 0;
   state.shakti = 40;
-  state.lives = 2;
+  state.lives = 3;
   state.stumbleTimer = 0;
   state.distance = 0;
   state.speed = CONFIG.BASE_SPEED;

@@ -29,7 +29,7 @@ const state = {
   shakti: 40,
   maxShakti: 100,
   distance: 0,
-  lives: 2,
+  lives: 3,
   lane: 1, // 0: left, 1: center, 2: right
   playerX: 0,
   targetX: 0,

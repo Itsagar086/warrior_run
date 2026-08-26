@@ -104,6 +104,31 @@ function initUI() {
   distValEl = distCard.querySelector('#hud-dist-val');
   distBarEl = distCard.querySelector('#hud-dist-bar');
 
+  // Lives Counter Card
+  const livesCard = document.createElement('div');
+  livesCard.id = 'hud-lives-card';
+  livesCard.style.cssText = `
+    background: linear-gradient(135deg, rgba(32, 36, 63, 0.88), rgba(107, 47, 47, 0.92));
+    border: 2px solid #ff4444;
+    border-radius: 12px;
+    padding: 10px 16px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), inset 0 0 10px rgba(255, 68, 68, 0.15);
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+  `;
+  livesCard.innerHTML = `
+    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #ff6666; font-weight: 700;">
+      ♥ LIVES
+    </div>
+    <div id="hud-lives-val" style="font-size: 22px; font-weight: 900; color: #ff4444; text-shadow: 0 0 8px #ff2222; letter-spacing: 3px;">
+      ♥♥♥
+    </div>
+  `;
+  hudContainer.appendChild(livesCard);
+
   // Right Card: Shakti & Divine Power
   const shaktiCard = document.createElement('div');
   shaktiCard.style.cssText = `
@@ -338,7 +363,7 @@ function initUI() {
   });
 }
 
-function updateHUD(punya, distance, shakti, power, combo) {
+function updateHUD(punya, distance, shakti, power, combo, lives) {
   if (!hudContainer) initUI();
   if (punyaValEl) punyaValEl.textContent = Math.floor(punya);
   if (distValEl) distValEl.textContent = `${Math.floor(distance)}m / 2000m`;
@@ -367,6 +392,17 @@ function updateHUD(punya, distance, shakti, power, combo) {
     } else {
       comboBadgeEl.style.display = 'none';
     }
+  }
+  // Update lives hearts display
+  const livesEl = document.getElementById('hud-lives-val');
+  if (livesEl && lives !== undefined) {
+    const l = Math.max(0, Math.min(3, Math.floor(lives)));
+    if (l === 3) livesEl.textContent = '♥♥♥';
+    else if (l === 2) livesEl.textContent = '♥♥♡';
+    else if (l === 1) livesEl.textContent = '♥♡♡';
+    else livesEl.textContent = '♡♡♡';
+    livesEl.style.color = l >= 2 ? '#ff4444' : l === 1 ? '#ff8c00' : '#888888';
+    livesEl.style.textShadow = l >= 2 ? '0 0 8px #ff2222' : l === 1 ? '0 0 8px #ff8c00' : 'none';
   }
 }
 

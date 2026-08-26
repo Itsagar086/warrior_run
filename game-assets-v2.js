@@ -753,16 +753,17 @@ function makeBoulder() {
 
 // ===== ASSET id=running-demon-asura label="Asura Running Demon" role=obstacle =====
 function makeAsuraDemon() {
-  // ART DIRECTION: silhouette = hunched horned demonic brute charging down the lane with glowing red eyes and jagged mace; signature = twin obsidian horns, fierce red skin markings, heavy spiked iron shoulder guards; proportion = menacing wide-shouldered brute 2.0m tall; colors = dark crimson #801818, onyx obsidian #1a1a24, glowing red eyes #ff0033.
+  // ART DIRECTION: silhouette = hunched horned demonic brute charging down the lane with glowing red eyes; signature = twin obsidian horns, dark red/black muscular torso, arms & legs, heavy spiked iron shoulder guards; proportion = menacing wide-shouldered brute 2.0m tall.
   const asura = new THREE.Group();
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: '#801818', roughness: 0.7, metalness: 0.1 });
-  const armorMat = new THREE.MeshStandardMaterial({ color: '#1a1a24', roughness: 0.5, metalness: 0.7 });
-  const hornMat = new THREE.MeshStandardMaterial({ color: '#0d0d12', roughness: 0.3, metalness: 0.4 });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: '#ff0033' });
+  const skinMat = new THREE.MeshStandardMaterial({ color: '#5c1010', roughness: 0.7, metalness: 0.15 });
+  const armorMat = new THREE.MeshStandardMaterial({ color: '#15151e', roughness: 0.5, metalness: 0.7 });
+  const hornMat = new THREE.MeshStandardMaterial({ color: '#0a0a0f', roughness: 0.3, metalness: 0.4 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#ff0033', emissive: '#ff0033', emissiveIntensity: 1.2 });
 
   // Torso
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.85, 0.5), skinMat);
+  body.name = 'torso';
   body.position.set(0, 1.05, 0);
   asura.add(body);
 
@@ -776,6 +777,7 @@ function makeAsuraDemon() {
 
   // Head & Horns
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), skinMat);
+  head.name = 'head';
   head.position.set(0, 1.65, 0.1);
   asura.add(head);
 
@@ -797,12 +799,27 @@ function makeAsuraDemon() {
     asura.add(eye);
   });
 
-  // Legs
-  [-0.2, 0.2].forEach(lx => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 0.28), skinMat);
-    leg.position.set(lx, 0.33, 0);
-    asura.add(leg);
-  });
+  // Left & Right Arms
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.24), skinMat);
+  armL.name = 'armL';
+  armL.position.set(-0.48, 1.0, 0);
+  asura.add(armL);
+
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.24), skinMat);
+  armR.name = 'armR';
+  armR.position.set(0.48, 1.0, 0);
+  asura.add(armR);
+
+  // Left & Right Legs
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 0.28), skinMat);
+  legL.name = 'legL';
+  legL.position.set(-0.2, 0.33, 0);
+  asura.add(legL);
+
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.65, 0.28), skinMat);
+  legR.name = 'legR';
+  legR.position.set(0.2, 0.33, 0);
+  asura.add(legR);
 
   asura.userData.role = 'obstacle';
   asura.userData.obstacleType = 'asura';
@@ -814,32 +831,43 @@ function makeAsuraDemon() {
 
 // ===== ASSET id=broken-road-pit label="Broken Road Gap" role=obstacle =====
 function makeBrokenRoad() {
-  // ART DIRECTION: silhouette = fractured gaping void in sandstone roadbed exposing swirling indigo abyss mist below; signature = jagged stone edge fragments hovering over void, glowing purple void smoke; proportion = full lane wide gap 3.2m long; colors = dark broken sandstone #453427, void indigo #15102a, glowing purple edge #8833ff.
+  // ART DIRECTION: silhouette = fractured gaping void in sandstone roadbed; signature = left crumble and right crumble road edge pieces flanking an empty dark gap in the middle with glowing purple void energy.
   const brokenGap = new THREE.Group();
 
   const stoneMat = new THREE.MeshStandardMaterial({ color: '#453427', roughness: 0.9 });
-  const voidMat = new THREE.MeshBasicMaterial({ color: '#15102a' });
-  const glowMat = new THREE.MeshStandardMaterial({ color: '#8833ff', emissive: '#aa44ff', emissiveIntensity: 0.8 });
+  const darkGapMat = new THREE.MeshStandardMaterial({ color: '#0a0614', emissive: '#260442', emissiveIntensity: 0.6, roughness: 0.95 });
+  const glowMat = new THREE.MeshStandardMaterial({ color: '#8833ff', emissive: '#aa44ff', emissiveIntensity: 1.0 });
 
-  // Dark Void Base under missing floor
-  const voidBase = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.05, 3.2), voidMat);
-  voidBase.position.set(0, -0.32, 0);
+  // Dark Void Pit Base under missing floor
+  const voidBase = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.4, 3.2), darkGapMat);
+  voidBase.position.set(0, -0.35, 0);
   brokenGap.add(voidBase);
 
-  // Jagged Fractured Edge Blocks at front and back
+  // Left Crumble Road Edge Piece
+  const leftCrumble = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 3.2), stoneMat);
+  leftCrumble.position.set(-1.05, -0.05, 0);
+  brokenGap.add(leftCrumble);
+
+  // Right Crumble Road Edge Piece
+  const rightCrumble = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 3.2), stoneMat);
+  rightCrumble.position.set(1.05, -0.05, 0);
+  brokenGap.add(rightCrumble);
+
+  // Jagged Fractured Stone Fragments along edges
   const edgePositions = [
-    [-0.7, 0.02, -1.5], [0.1, 0.02, -1.55], [0.75, 0.02, -1.45],
-    [-0.65, 0.02, 1.5], [0.2, 0.02, 1.48], [0.8, 0.02, 1.52]
+    [-0.8, 0.02, -1.5], [0.0, 0.02, -1.55], [0.8, 0.02, -1.45],
+    [-0.75, 0.02, 1.5], [0.1, 0.02, 1.48], [0.85, 0.02, 1.52],
+    [-1.0, 0.04, -0.6], [1.0, 0.04, 0.6]
   ];
   edgePositions.forEach(([x, y, z]) => {
-    const frag = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), stoneMat);
+    const frag = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 0), stoneMat);
     frag.position.set(x, y, z);
-    frag.scale.set(1.2, 0.4, 0.8);
+    frag.scale.set(1.1, 0.4, 0.8);
     brokenGap.add(frag);
   });
 
-  // Glowing rune energy crack across edges
-  const crack = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.02, 0.1), glowMat);
+  // Glowing rune energy cracks across front & back edges
+  const crack = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.02, 0.12), glowMat);
   crack.position.set(0, -0.15, -1.5);
   brokenGap.add(crack);
   const crackBack = crack.clone();
@@ -856,23 +884,40 @@ function makeBrokenRoad() {
 
 // ===== ASSET id=moving-evil-soul label="Floating Evil Soul" role=obstacle =====
 function makeEvilSoul() {
-  // ART DIRECTION: silhouette = wispy spectral dark phantom floating mid-air with glowing cyan skull face and trailing smoke tendrils; signature = ethereal translucent shroud, hollow glowing eyes, drifting motion; proportion = hovering spirit 1.5m tall; colors = shadow smoke #1d182e, ghostly teal #3da090, eye glow #00ffee.
+  // ART DIRECTION: silhouette = dark floating spirit with glowing dark purple emissive orb core and outer wispy transparent ghost shell with cyan eyes.
   const soul = new THREE.Group();
 
-  const shroudMat = new THREE.MeshStandardMaterial({
-    color: '#1d182e',
-    emissive: '#2a1f47',
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: '#3b0a45',
+    emissive: '#8800cc',
+    emissiveIntensity: 1.0,
+    roughness: 0.3
+  });
+
+  const shellMat = new THREE.MeshStandardMaterial({
+    color: '#1a0524',
+    emissive: '#5500aa',
     emissiveIntensity: 0.5,
     roughness: 0.4,
     transparent: true,
-    opacity: 0.85
+    opacity: 0.55
   });
-  const eyeMat = new THREE.MeshBasicMaterial({ color: '#00ffee' });
 
-  // Floating Ghost Head / Core
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 12), shroudMat);
-  head.position.set(0, 1.35, 0);
-  soul.add(head);
+  const eyeMat = new THREE.MeshStandardMaterial({
+    color: '#00ffee',
+    emissive: '#00ffee',
+    emissiveIntensity: 1.2
+  });
+
+  // Inner Glowing Core Orb
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 14), coreMat);
+  core.position.set(0, 1.35, 0);
+  soul.add(core);
+
+  // Outer Transparent Wispy Ghost Shell
+  const outerShell = new THREE.Mesh(new THREE.SphereGeometry(0.44, 16, 16), shellMat);
+  outerShell.position.set(0, 1.35, 0);
+  soul.add(outerShell);
 
   // Glowing Skull Eyes
   [-0.12, 0.12].forEach(ex => {
@@ -882,13 +927,13 @@ function makeEvilSoul() {
   });
 
   // Wispy Trailing Shroud Tail
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.1, 8), shroudMat);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.1, 8), shellMat);
   tail.position.set(0, 0.7, 0);
   tail.rotation.x = Math.PI;
   soul.add(tail);
 
   // Floating Aura Ring
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.03, 8, 16), eyeMat);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 8, 16), eyeMat);
   ring.rotation.x = Math.PI / 2;
   ring.position.set(0, 1.35, 0);
   soul.add(ring);
