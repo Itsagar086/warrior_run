@@ -1,10 +1,8 @@
-import * as THREE from 'three';
-import { voxelToMesh, tickVoxels, boot } from 'playlabs-boot';
-// ===== SYSTEM id=system-hud label="HUD and UI Management" =====
+// The in-run interface: Punya and combo, distance to Kailash, lives, the
+// Shakti meter with the primed power, the action banner, the touch controls
+// and the pause card.
+
 let hudContainer = null;
-let splashOverlay = null;
-let gameOverOverlay = null;
-let victoryOverlay = null;
 let bannerEl = null;
 let punyaValEl = null;
 let distValEl = null;
@@ -12,9 +10,13 @@ let distBarEl = null;
 let shaktiBarEl = null;
 let powerSlotEl = null;
 let comboBadgeEl = null;
+let pauseOverlay = null;
+let bannerTimeoutId = null;
 
-function initUI() {
-  if (document.getElementById('snake-way-ui-root')) return;
+// Creates (or returns) the single overlay root every UI piece attaches to.
+export function createUIRoot() {
+  const existing = document.getElementById('snake-way-ui-root');
+  if (existing) return existing;
 
   const root = document.createElement('div');
   root.id = 'snake-way-ui-root';
@@ -29,6 +31,10 @@ function initUI() {
   `;
   document.body.appendChild(root);
 
+  return root;
+}
+
+export function initHUD(root) {
   // HUD Top Bar
   hudContainer = document.createElement('div');
   hudContainer.id = 'hud-container';
@@ -220,151 +226,46 @@ function initUI() {
   touchControls.querySelector('#btn-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__inputJump) window.__inputJump(); });
   touchControls.querySelector('#btn-slide').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__inputSlide) window.__inputSlide(); });
   touchControls.querySelector('#btn-power').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__triggerPower) window.__triggerPower(); });
+}
 
-  // Splash Screen Overlay
-  splashOverlay = document.createElement('div');
-  splashOverlay.id = 'splash-overlay';
-  splashOverlay.style.cssText = `
+export function initPauseOverlay(root) {
+  // Pause Overlay
+  pauseOverlay = document.createElement('div');
+  pauseOverlay.id = 'pause-overlay';
+  pauseOverlay.style.cssText = `
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at center, rgba(58, 47, 107, 0.85) 0%, rgba(32, 36, 63, 0.96) 80%);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-    pointer-events: auto;
-    padding: 24px;
-    text-align: center;
-  `;
-  splashOverlay.innerHTML = `
-    <div style="max-width: 580px; background: rgba(26, 22, 43, 0.9); border: 3px solid #c9a24b; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 140, 46, 0.5);">
-      <div style="font-size: 14px; letter-spacing: 3px; color: #4de0c0; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        NAGA LOKA · SACRED ASCENT
-      </div>
-      <h1 style="font-size: 32px; color: #fff5cc; margin: 0 0 12px; text-shadow: 0 0 14px #ff8c2e; font-weight: 900; line-height: 1.2;">
-        SAIYAN THROUGH THE SNAKE WAY
-      </h1>
-      <p style="font-size: 15px; color: #d6cfec; line-height: 1.6; margin-bottom: 20px;">
-        Sprint the ancient serpentine causeway as a devotee warrior. Dodge sacred fire pits, Asura demons, floating souls, broken gaps, and temple pillars while collecting <b>Om Glyphs</b> and <b>Rudraksha Beads</b> to reach the holy summit of <b>Mount Kailash (2000m)</b>!
-      </p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; text-align: left; background: rgba(58, 47, 107, 0.4); padding: 14px; border-radius: 10px; border: 1px solid rgba(201, 162, 75, 0.4);">
-        <div style="font-size: 13px; color: #ffe6aa;">
-          <b>🕹️ CONTROLS:</b><br>
-          • <b>A / D / Arrows:</b> Switch Lanes<br>
-          • <b>W / Space:</b> Jump / Double Jump<br>
-          • <b>S / Down:</b> Slide Under
-        </div>
-        <div style="font-size: 13px; color: #ffe6aa;">
-          <b>✨ DIVINE POWERS:</b><br>
-          • <b>Shift / Tap:</b> Cast Power<br>
-          • <b>Chakra:</b> Blasts lane ahead<br>
-          • <b>Trishul / Shield:</b> Triple lane blast & barrier
-        </div>
-      </div>
-      <button id="btn-start" style="background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #ffd700; color: #ffffff; font-size: 18px; font-weight: 900; letter-spacing: 1.5px; padding: 14px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,140,46,0.8); transition: transform 0.15s, box-shadow 0.15s;">
-        BEGIN SACRED PILGRIMAGE 🕉️
-      </button>
-    </div>
-  `;
-  root.appendChild(splashOverlay);
-
-  splashOverlay.querySelector('#btn-start').addEventListener('click', () => {
-    splashOverlay.style.display = 'none';
-    if (window.__startGame) window.__startGame();
-  });
-
-  // Game Over Overlay
-  gameOverOverlay = document.createElement('div');
-  gameOverOverlay.id = 'game-over-overlay';
-  gameOverOverlay.style.cssText = `
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at center, rgba(40, 20, 30, 0.9) 0%, rgba(15, 12, 25, 0.97) 80%);
+    background: rgba(15, 12, 25, 0.72);
     display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 200;
+    z-index: 190;
     pointer-events: auto;
     padding: 24px;
     text-align: center;
   `;
-  gameOverOverlay.innerHTML = `
-    <div style="max-width: 480px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ff4500; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 69, 0, 0.6);">
-      <div style="font-size: 13px; letter-spacing: 3px; color: #ff8c2e; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        PILGRIMAGE INTERRUPTED
-      </div>
-      <h2 style="font-size: 30px; color: #fff5cc; margin: 0 0 16px; font-weight: 900;">
-        FALLEN ON THE SNAKE WAY
+  pauseOverlay.innerHTML = `
+    <div style="max-width: 380px; background: rgba(32, 36, 63, 0.95); border: 3px solid #c9a24b; border-radius: 20px; padding: 28px 26px; box-shadow: 0 0 30px rgba(201, 162, 75, 0.5);">
+      <h2 style="font-size: 26px; color: #fff5cc; margin: 0 0 10px; font-weight: 900; letter-spacing: 2px;">
+        &#9208; PILGRIMAGE PAUSED
       </h2>
-      <div style="background: rgba(58, 47, 107, 0.5); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(201, 162, 75, 0.3);">
-        <div style="font-size: 16px; color: #d6cfec; margin-bottom: 6px;">
-          Punya Accrued: <b id="go-punya-val" style="color: #ffaa33; font-size: 20px;">0</b>
-        </div>
-        <div style="font-size: 16px; color: #d6cfec;">
-          Distance Reached: <b id="go-dist-val" style="color: #4de0c0; font-size: 20px;">0m</b> / 2000m
-        </div>
-      </div>
-      <button id="btn-restart" style="background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #ffd700; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 12px 36px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,140,46,0.8);">
-        RETRY ASCENT ⚡
-      </button>
-    </div>
-  `;
-  root.appendChild(gameOverOverlay);
-
-  gameOverOverlay.querySelector('#btn-restart').addEventListener('click', () => {
-    gameOverOverlay.style.display = 'none';
-    if (window.__restartGame) window.__restartGame();
-  });
-
-  // Victory Overlay (Mount Kailash Reached)
-  victoryOverlay = document.createElement('div');
-  victoryOverlay.id = 'victory-overlay';
-  victoryOverlay.style.cssText = `
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at center, rgba(30, 70, 90, 0.92) 0%, rgba(15, 20, 45, 0.98) 80%);
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-    pointer-events: auto;
-    padding: 24px;
-    text-align: center;
-  `;
-  victoryOverlay.innerHTML = `
-    <div style="max-width: 520px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ffd700; border-radius: 20px; padding: 36px 30px; box-shadow: 0 0 45px rgba(77, 224, 192, 0.7);">
-      <div style="font-size: 14px; letter-spacing: 3px; color: #4de0c0; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        DIVINE ENLIGHTENMENT ACHIEVED
-      </div>
-      <h2 style="font-size: 32px; color: #fff5cc; margin: 0 0 16px; font-weight: 900; text-shadow: 0 0 16px #4de0c0;">
-        🕉️ MOUNT KAILASH REACHED! 🏔️
-      </h2>
-      <p style="font-size: 15px; color: #e2dcfa; line-height: 1.6; margin-bottom: 20px;">
-        You have traversed all 2000 meters of the perilous Snake Way, vanquished the Asura hazards, and ascended to the sacred abode of Lord Shiva and Lord Vishnu!
+      <p style="font-size: 14px; color: #d6cfec; line-height: 1.6; margin-bottom: 20px;">
+        The Snake Way waits. Press <b>P</b> or <b>Esc</b> to resume the ascent.
       </p>
-      <div style="background: rgba(58, 47, 107, 0.6); border-radius: 12px; padding: 16px; margin-bottom: 24px; border: 1px solid #c9a24b;">
-        <div style="font-size: 18px; color: #ffffff;">
-          Final Sacred Punya: <b id="vic-punya-val" style="color: #ffd700; font-size: 24px;">0</b>
-        </div>
-      </div>
-      <button id="btn-vic-restart" style="background: linear-gradient(135deg, #4de0c0, #207260); border: 2px solid #fff; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 14px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 25px rgba(77,224,192,0.8);">
-        ASCEND AGAIN 🕉️
+      <button id="btn-resume" style="background: linear-gradient(135deg, #4de0c0, #207260); border: 2px solid #fff; color: #ffffff; font-size: 16px; font-weight: 900; letter-spacing: 1.5px; padding: 12px 34px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(77,224,192,0.7);">
+        RESUME &#9654;
       </button>
     </div>
   `;
-  root.appendChild(victoryOverlay);
+  root.appendChild(pauseOverlay);
 
-  victoryOverlay.querySelector('#btn-vic-restart').addEventListener('click', () => {
-    victoryOverlay.style.display = 'none';
-    if (window.__restartGame) window.__restartGame();
+  pauseOverlay.querySelector('#btn-resume').addEventListener('click', () => {
+    if (window.__togglePause) window.__togglePause();
   });
 }
 
-function updateHUD(punya, distance, shakti, power, combo, lives) {
-  if (!hudContainer) initUI();
+export function updateHUD(punya, distance, shakti, power, combo, lives) {
   if (punyaValEl) punyaValEl.textContent = Math.floor(punya);
   if (distValEl) distValEl.textContent = `${Math.floor(distance)}m / 2000m`;
   if (distBarEl) {
@@ -406,13 +307,14 @@ function updateHUD(punya, distance, shakti, power, combo, lives) {
   }
 }
 
-function showBanner(text, duration = 2.5) {
-  if (!bannerEl) initUI();
+export function showBanner(text, duration = 2.5) {
   if (!bannerEl) return;
   bannerEl.textContent = text;
   bannerEl.style.opacity = '1';
   bannerEl.style.transform = 'translateX(-50%) scale(1.05)';
-  setTimeout(() => {
+  if (bannerTimeoutId !== null) clearTimeout(bannerTimeoutId);
+  bannerTimeoutId = setTimeout(() => {
+    bannerTimeoutId = null;
     if (bannerEl) {
       bannerEl.style.opacity = '0';
       bannerEl.style.transform = 'translateX(-50%) scale(0.9)';
@@ -420,31 +322,6 @@ function showBanner(text, duration = 2.5) {
   }, duration * 1000);
 }
 
-function showSplash() {
-  if (!splashOverlay) initUI();
-  if (splashOverlay) splashOverlay.style.display = 'flex';
-  if (gameOverOverlay) gameOverOverlay.style.display = 'none';
-  if (victoryOverlay) victoryOverlay.style.display = 'none';
+export function showPause(visible) {
+  if (pauseOverlay) pauseOverlay.style.display = visible ? 'flex' : 'none';
 }
-
-function showGameOver(score, isVictory = false) {
-  if (!gameOverOverlay) initUI();
-  if (isVictory) {
-    if (victoryOverlay) {
-      victoryOverlay.style.display = 'flex';
-      const vVal = victoryOverlay.querySelector('#vic-punya-val');
-      if (vVal) vVal.textContent = Math.floor(score);
-    }
-  } else {
-    if (gameOverOverlay) {
-      gameOverOverlay.style.display = 'flex';
-      const gVal = gameOverOverlay.querySelector('#go-punya-val');
-      if (gVal) gVal.textContent = Math.floor(score);
-      const dVal = gameOverOverlay.querySelector('#go-dist-val');
-      if (dVal && window.__game) dVal.textContent = `${Math.floor(window.__game.state.distance)}m`;
-    }
-  }
-}
-
-window.__game = window.__game || {};
-window.__game.ui = { initUI, updateHUD, showSplash, showGameOver, showBanner };

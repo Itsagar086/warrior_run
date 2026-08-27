@@ -1,0 +1,140 @@
+// End-of-run screens: the death card with the score breakdown and retry
+// button, and the victory card for reaching Mount Kailash.
+import { showPause } from './HUD.js';
+
+let gameOverOverlay = null;
+let victoryOverlay = null;
+
+export function initGameOverScreens(root) {
+  // Game Over Overlay
+  gameOverOverlay = document.createElement('div');
+  gameOverOverlay.id = 'game-over-overlay';
+  gameOverOverlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(40, 20, 30, 0.9) 0%, rgba(15, 12, 25, 0.97) 80%);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    pointer-events: auto;
+    padding: 24px;
+    text-align: center;
+  `;
+  gameOverOverlay.innerHTML = `
+    <div style="max-width: 480px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ff4500; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 69, 0, 0.6);">
+      <div style="font-size: 13px; letter-spacing: 3px; color: #ff8c2e; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
+        PILGRIMAGE INTERRUPTED
+      </div>
+      <h2 style="font-size: 30px; color: #fff5cc; margin: 0 0 16px; font-weight: 900;">
+        FALLEN ON THE SNAKE WAY
+      </h2>
+      <div style="background: rgba(58, 47, 107, 0.5); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(201, 162, 75, 0.3);">
+        <div style="font-size: 16px; color: #d6cfec; margin-bottom: 6px;">
+          Punya Accrued: <b id="go-punya-val" style="color: #ffaa33; font-size: 20px;">0</b>
+        </div>
+        <div style="font-size: 16px; color: #d6cfec;">
+          Distance Reached: <b id="go-dist-val" style="color: #4de0c0; font-size: 20px;">0m</b> / 2000m
+        </div>
+        <div id="go-best-val" style="font-size: 13px; color: #a79ec4; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(201, 162, 75, 0.25);">
+          Best: 0 punya
+        </div>
+      </div>
+      <button id="btn-restart" style="background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #ffd700; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 12px 36px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,140,46,0.8);">
+        RETRY ASCENT ⚡
+      </button>
+    </div>
+  `;
+  root.appendChild(gameOverOverlay);
+
+  gameOverOverlay.querySelector('#btn-restart').addEventListener('click', () => {
+    gameOverOverlay.style.display = 'none';
+    if (window.__restartGame) window.__restartGame();
+  });
+
+  // Victory Overlay (Mount Kailash Reached)
+  victoryOverlay = document.createElement('div');
+  victoryOverlay.id = 'victory-overlay';
+  victoryOverlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(30, 70, 90, 0.92) 0%, rgba(15, 20, 45, 0.98) 80%);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    pointer-events: auto;
+    padding: 24px;
+    text-align: center;
+  `;
+  victoryOverlay.innerHTML = `
+    <div style="max-width: 520px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ffd700; border-radius: 20px; padding: 36px 30px; box-shadow: 0 0 45px rgba(77, 224, 192, 0.7);">
+      <div style="font-size: 14px; letter-spacing: 3px; color: #4de0c0; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
+        DIVINE ENLIGHTENMENT ACHIEVED
+      </div>
+      <h2 style="font-size: 32px; color: #fff5cc; margin: 0 0 16px; font-weight: 900; text-shadow: 0 0 16px #4de0c0;">
+        🕉️ MOUNT KAILASH REACHED! 🏔️
+      </h2>
+      <p style="font-size: 15px; color: #e2dcfa; line-height: 1.6; margin-bottom: 20px;">
+        You have traversed all 2000 meters of the perilous Snake Way, vanquished the Asura hazards, and ascended to the sacred abode of Lord Shiva and Lord Vishnu!
+      </p>
+      <div style="background: rgba(58, 47, 107, 0.6); border-radius: 12px; padding: 16px; margin-bottom: 24px; border: 1px solid #c9a24b;">
+        <div style="font-size: 18px; color: #ffffff;">
+          Final Sacred Punya: <b id="vic-punya-val" style="color: #ffd700; font-size: 24px;">0</b>
+        </div>
+        <div id="vic-best-val" style="font-size: 13px; color: #a79ec4; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(201, 162, 75, 0.25);">
+          Best: 0 punya
+        </div>
+      </div>
+      <button id="btn-vic-restart" style="background: linear-gradient(135deg, #4de0c0, #207260); border: 2px solid #fff; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 14px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 25px rgba(77,224,192,0.8);">
+        ASCEND AGAIN 🕉️
+      </button>
+    </div>
+  `;
+  root.appendChild(victoryOverlay);
+
+  victoryOverlay.querySelector('#btn-vic-restart').addEventListener('click', () => {
+    victoryOverlay.style.display = 'none';
+    if (window.__restartGame) window.__restartGame();
+  });
+}
+
+export function hideEndScreens() {
+  if (gameOverOverlay) gameOverOverlay.style.display = 'none';
+  if (victoryOverlay) victoryOverlay.style.display = 'none';
+}
+
+export function showGameOver(score, isVictory = false, best = null) {
+  showPause(false);
+
+  const bestText = best
+    ? `${best.isNewBest ? 'NEW BEST! ' : 'Best: '}${Math.floor(best.punya)} punya · ${Math.floor(best.distance)}m`
+    : '';
+
+  const paintBest = (el) => {
+    if (!el) return;
+    el.textContent = bestText;
+    el.style.display = bestText ? 'block' : 'none';
+    el.style.color = best && best.isNewBest ? '#ffd700' : '#a79ec4';
+  };
+
+  if (isVictory) {
+    if (victoryOverlay) {
+      victoryOverlay.style.display = 'flex';
+      const vVal = victoryOverlay.querySelector('#vic-punya-val');
+      if (vVal) vVal.textContent = Math.floor(score);
+      paintBest(victoryOverlay.querySelector('#vic-best-val'));
+    }
+  } else {
+    if (gameOverOverlay) {
+      gameOverOverlay.style.display = 'flex';
+      const gVal = gameOverOverlay.querySelector('#go-punya-val');
+      if (gVal) gVal.textContent = Math.floor(score);
+      const dVal = gameOverOverlay.querySelector('#go-dist-val');
+      if (dVal && window.__game) dVal.textContent = `${Math.floor(window.__game.state.distance)}m`;
+      paintBest(gameOverOverlay.querySelector('#go-best-val'));
+    }
+  }
+}
