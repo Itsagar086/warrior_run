@@ -6,14 +6,14 @@ import { CONFIG } from '../utils/Constants.js';
 import { state } from '../core/GameState.js';
 import { playSound } from '../systems/AudioSystem.js';
 import { spawnFX } from '../systems/FXSystem.js';
-import { swing, swingForward } from '../utils/AnimationHelper.js';
+import { swing, swingForward, bounce } from '../utils/AnimationHelper.js';
 import { shakeCamera } from '../core/CameraRig.js';
 
-const SKIN = 0x8b5e3c;
+const SKIN = 0xc47948;
 const HAIR = 0x2c1810;
 const TILAK = 0xff2200;
-const DHOTI = 0xff6600;
-const FOOT = 0x6b4423;
+const DHOTI = 0xf59e0b;
+const FOOT = 0x8a5a33;
 const THREAD = 0xffffff;
 
 // Joint heights, measured up from the soles so the figure stands on y = 0
@@ -71,9 +71,11 @@ function makePlayer() {
   const playerGroup = new THREE.Group();
 
   const skinMat = new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.72, metalness: 0.02 });
+  const skinShadeMat = new THREE.MeshStandardMaterial({ color: 0xa25f38, roughness: 0.8, metalness: 0.02 });
   const hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.9 });
   const tilakMat = new THREE.MeshStandardMaterial({ color: TILAK, emissive: TILAK, emissiveIntensity: 0.4, roughness: 0.5 });
   const dhotiMat = new THREE.MeshStandardMaterial({ color: DHOTI, roughness: 0.8, metalness: 0.0 });
+  const dhotiDeepMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.85, metalness: 0.0 });
   const footMat = new THREE.MeshStandardMaterial({ color: FOOT, roughness: 0.85 });
   const threadMat = new THREE.MeshStandardMaterial({ color: THREAD, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.18 });
 
@@ -88,6 +90,33 @@ function makePlayer() {
   torso.position.set(0, HIP_Y, 0);
   torso.castShadow = true;
   playerGroup.add(torso);
+
+  // The reference is a bare athletic back, so the torso box gets the muscle
+  // over the top of it: a broad shoulder yoke, two lats tapering to the waist,
+  // and a spine groove down the middle.
+  const shoulders = new THREE.Mesh(new THREE.CapsuleGeometry(0.145, 0.34, 6, 10), skinMat);
+  shoulders.rotation.z = Math.PI / 2;
+  shoulders.position.set(0, TORSO_H - 0.13, -0.01);
+  shoulders.scale.set(1, 1, 0.82);
+  shoulders.castShadow = true;
+  torso.add(shoulders);
+
+  [-1, 1].forEach(side => {
+    const lat = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.24, 6, 8), skinMat);
+    lat.position.set(side * 0.19, TORSO_H * 0.56, -0.02);
+    lat.rotation.z = side * 0.22;
+    lat.scale.set(1, 1, 0.7);
+    torso.add(lat);
+  });
+
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.05, TORSO_H * 0.72, 0.04), skinShadeMat);
+  spine.position.set(0, TORSO_H * 0.55, -0.145);
+  torso.add(spine);
+
+  // Neck, so the head does not sit straight on the shoulders
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.12, 8), skinMat);
+  neck.position.set(0, TORSO_H + 0.04, -0.01);
+  torso.add(neck);
 
   // Sacred thread, worn diagonally across the chest and back
   const janeu = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.015, 8, 20), threadMat);
@@ -122,11 +151,22 @@ function makePlayer() {
   head.add(tilak);
 
   /* ---------------------------------------------------------------- dhoti */
-  const dhoti = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.55, 0.26), dhotiMat);
+  const dhotiGeo = taperGeometry(new THREE.BoxGeometry(0.52, 0.55, 0.26), 0.86, 1.22);
+  const dhoti = new THREE.Mesh(dhotiGeo, dhotiMat);
   dhoti.name = 'dhoti';
   dhoti.position.set(0, HIP_Y - 0.16, 0);
   dhoti.castShadow = true;
   playerGroup.add(dhoti);
+
+  // Waist sash, and the loose fold of cloth hanging at the hip
+  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.27, 0.1, 12), dhotiDeepMat);
+  sash.position.set(0, HIP_Y + 0.06, 0);
+  dhoti.parent.add(sash);
+
+  const fold = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.34, 0.07), dhotiDeepMat);
+  fold.position.set(0.21, HIP_Y - 0.2, 0.07);
+  fold.rotation.z = -0.2;
+  playerGroup.add(fold);
 
   /* ----------------------------------------------------------------- arms */
   function buildArm(side) {
@@ -195,10 +235,10 @@ function makePlayer() {
   dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
 
   const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
-    color: 0xd9c3a5,
-    size: 0.11,
+    color: 0xe8d6ba,
+    size: 0.17,
     transparent: true,
-    opacity: 0.75,
+    opacity: 0.85,
     depthWrite: false
   }));
   dust.name = 'footDust';
@@ -492,6 +532,8 @@ function updateDust(dt, running) {
 function animateRun(time, dt) {
   const t = time * 10;
 
+  // Legs drive from the hip, and the shin trails the thigh rather than moving
+  // with it - that lag is most of what separates a run from a march.
   parts.leftUpperLeg.rotation.x = swing(t, 0.7);
   parts.rightUpperLeg.rotation.x = swing(t + Math.PI, 0.7);
 
@@ -501,20 +543,29 @@ function animateRun(time, dt) {
   parts.leftUpperArm.rotation.x = swing(t + Math.PI, 0.5);
   parts.rightUpperArm.rotation.x = swing(t, 0.5);
 
-  // Elbows carried bent, opening slightly on the backswing
-  parts.leftLowerArm.rotation.x = -0.5 - swingForward(t + Math.PI, 0.35);
-  parts.rightLowerArm.rotation.x = -0.5 - swingForward(t, 0.35);
+  // Elbows carried bent, opening on the backswing and tucking on the drive
+  parts.leftLowerArm.rotation.x = -0.55 - swingForward(t + Math.PI + 0.6, 0.45);
+  parts.rightLowerArm.rotation.x = -0.55 - swingForward(t + 0.6, 0.45);
+
+  // A sprinter's arms travel slightly across the body, not straight fore-aft
+  parts.leftUpperArm.rotation.z = 0.13 + swing(t + Math.PI, 0.08);
+  parts.rightUpperArm.rotation.z = -0.13 + swing(t, 0.08);
 
   // Ankles roll through the stride
   parts.leftFoot.rotation.x = swing(t + 0.9, 0.25);
   parts.rightFoot.rotation.x = swing(t + Math.PI + 0.9, 0.25);
 
-  parts.torso.rotation.z = swing(t, 0.03);
-  parts.torso.rotation.x = 0.1;
+  // Shoulders counter-rotate against the hips. This is the single biggest
+  // reason the old gait read as robotic: the whole trunk was rigid.
+  parts.torso.rotation.y = swing(t, 0.14);
+  parts.torso.rotation.z = swing(t, 0.045);
+  parts.torso.rotation.x = 0.12 + bounce(t, 0.025);
+  parts.torso.position.y = HIP_Y + bounce(t, 0.035);
 
-  // Head bob, twice per stride. Set from the base height rather than
-  // accumulated, so it oscillates instead of drifting upward.
-  parts.head.position.y = (HEAD_Y - HIP_Y) + swing(time * 20, 0.008);
+  // The head holds its line against the shoulder yaw and bobs twice a stride
+  parts.head.rotation.y = swing(t + Math.PI, 0.08);
+  parts.head.rotation.z = swing(t + Math.PI, 0.035);
+  parts.head.position.y = (HEAD_Y - HIP_Y) + swing(time * 20, 0.01);
 
   // Each zero crossing is one foot planting: puff dust under that foot
   const stride = Math.sin(t);
@@ -538,6 +589,11 @@ function animateJump(dt) {
 
   parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.05, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
+  parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
+  parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
+  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, 0.2, rate, dt);
+  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, -0.2, rate, dt);
+  parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
   parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
 
@@ -556,6 +612,11 @@ function animateSlide(dt) {
 
   parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.6, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
+  parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
+  parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
+  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, 0.25, rate, dt);
+  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, -0.25, rate, dt);
+  parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
   parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
 
