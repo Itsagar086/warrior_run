@@ -225,4 +225,4 @@ export function updateTrack(scrollDelta) {
   });
 }
 
-export { makeGroundSegment, makeInscription, GROUND_SEGMENTS, SEGMENT_DEPTH, INSCRIPTION_TEXT };
+export { makeGroundSegment, makeInscription, makeInscriptionTexture, GROUND_SEGMENTS, SEGMENT_DEPTH, INSCRIPTION_TEXT };

@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { spawnFX } from '../systems/FXSystem.js';
 import { makeRadialGlowTexture } from '../environment/Lighting.js';
+import { makeInscriptionTexture } from '../environment/Track.js';
 import { makeAsuraDemon } from './AsuraDemon.js';
 import { makeEvilSoul } from './EvilSoul.js';
 import { makeCobra } from './CobraSnake.js';
@@ -141,13 +142,14 @@ function makeBoulder() {
   const boulderGroup = new THREE.Group();
 
   const stoneMat = new THREE.MeshStandardMaterial({
-    color: 0x7a7a6a,
-    roughness: 0.92,
-    metalness: 0.04,
+    color: 0x8f9179,
+    roughness: 0.94,
+    metalness: 0.02,
     flatShading: true,
     side: THREE.DoubleSide
   });
-  const coreMat = new THREE.MeshStandardMaterial({ color: 0x24211c, roughness: 1.0 });
+  const coreMat = new THREE.MeshStandardMaterial({ color: 0x1d1f18, roughness: 1.0 });
+  const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6b34, roughness: 1.0, flatShading: true });
 
   // The rolling part: dark core plus the cracked shell around it
   const core = new THREE.Group();
@@ -161,6 +163,15 @@ function makeBoulder() {
   const shell = new THREE.Mesh(crackedShell(0.9, 12), stoneMat);
   shell.castShadow = true;
   core.add(shell);
+
+  // Moss clinging to the shell, as on the reference's weathered ball
+  [[0.42, 0.62, 0.38, 0.34], [-0.55, 0.3, -0.5, 0.28], [0.1, -0.6, 0.62, 0.3], [-0.3, 0.2, 0.78, 0.22]]
+    .forEach(([mx, my, mz, r]) => {
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), mossMat);
+      patch.position.set(mx, my, mz).multiplyScalar(1.06);
+      patch.scale.set(1, 0.5, 1);
+      core.add(patch);
+    });
 
   // A couple of dust puffs clinging to its base
   const dustMat = new THREE.MeshStandardMaterial({
@@ -285,71 +296,82 @@ function makeTempleArch() {
 
 // ===== ASSET id=broken-road-pit label="Broken Causeway" role=obstacle =====
 function makeBrokenRoad() {
-  // ART DIRECTION: silhouette = the causeway sheared clean through, two slabs
-  // with a black void between them; signature = crumbled stone teeth along both
-  // broken edges, violet void light rising out of the gap; the devotee jumps it.
-  const brokenGap = new THREE.Group();
+  // ART DIRECTION: silhouette = a thick carved slab lying square across the
+  // lane, high enough to catch a running foot; signature = Sanskrit cut into
+  // its face and molten gold light along the leading edge, matching the
+  // reference tile; the devotee jumps it. colors = path sandstone #c4956a with
+  // a gold #ffaa22 edge.
+  const slabGroup = new THREE.Group();
 
-  const slabMat = new THREE.MeshStandardMaterial({ color: 0xb08a63, roughness: 0.9 });
-  const slabEdgeMat = new THREE.MeshStandardMaterial({ color: 0x6b5540, roughness: 0.95 });
-  const voidMat = new THREE.MeshStandardMaterial({
-    color: 0x07040f, emissive: 0x1b0433, emissiveIntensity: 0.7, roughness: 1.0
-  });
-  const glowMat = new THREE.MeshStandardMaterial({
-    color: 0x8833ff, emissive: 0xaa44ff, emissiveIntensity: 1.2
+  const slabMat = new THREE.MeshStandardMaterial({ color: 0xc4956a, roughness: 0.88 });
+  const slabTopMat = new THREE.MeshStandardMaterial({ color: 0xd3a479, roughness: 0.82 });
+  const slabEdgeMat = new THREE.MeshStandardMaterial({ color: 0x7d6046, roughness: 0.95 });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xffaa22, emissive: 0xff8800, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.5
   });
 
   const SLAB_W = 2.0;   // one lane wide, matching what the collision actually tests
-  const SLAB_D = 1.2;
-  const GAP = 1.6;      // the hole itself; slabs + gap span 4 units of causeway
+  const SLAB_D = 1.7;
+  const SLAB_H = 0.52;  // tall enough that running into it is a trip, not a step
 
-  // The void under the missing stone
-  const voidFloor = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W, 0.5, GAP), voidMat);
-  voidFloor.position.set(0, -0.55, 0);
-  brokenGap.add(voidFloor);
+  // The block itself, sunk slightly so it sits into the causeway
+  const body = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W, SLAB_H, SLAB_D), slabMat);
+  body.position.set(0, SLAB_H / 2 - 0.06, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  slabGroup.add(body);
 
-  const voidWalls = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W - 0.04, 0.6, GAP - 0.04), voidMat);
-  voidWalls.position.set(0, -0.28, 0);
-  brokenGap.add(voidWalls);
-
-  // The two surviving platforms, fore and aft of the hole
-  [-1, 1].forEach(side => {
-    const z = side * (GAP / 2 + SLAB_D / 2);
-
-    const slab = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W, 0.24, SLAB_D), slabMat);
-    slab.position.set(0, -0.1, z);
-    slab.receiveShadow = true;
-    brokenGap.add(slab);
-
-    const lip = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W, 0.06, 0.1), slabEdgeMat);
-    lip.position.set(0, 0.02, z - side * (SLAB_D / 2));
-    brokenGap.add(lip);
-
-    // Crumbled teeth along the broken edge
-    for (let i = 0; i < 5; i++) {
-      const tooth = new THREE.Mesh(new THREE.DodecahedronGeometry(0.13 + Math.random() * 0.07, 0), slabEdgeMat);
-      tooth.position.set(
-        -SLAB_W / 2 + 0.2 + i * (SLAB_W - 0.4) / 4,
-        -0.04,
-        z - side * (SLAB_D / 2 + 0.02)
-      );
-      tooth.scale.set(1.0, 0.55, 0.8);
-      tooth.rotation.y = Math.random() * Math.PI;
-      brokenGap.add(tooth);
+  // Cut top face, split into tiles like the reference
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j += 2) {
+      const tile = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W / 3 - 0.06, 0.04, SLAB_D / 2 - 0.06), slabTopMat);
+      tile.position.set(i * (SLAB_W / 3), SLAB_H - 0.05, j * (SLAB_D / 4));
+      slabGroup.add(tile);
     }
+  }
 
-    // Violet rune light along the fracture
-    const crack = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W - 0.15, 0.02, 0.07), glowMat);
-    crack.position.set(0, 0.03, z - side * (SLAB_D / 2 - 0.06));
-    brokenGap.add(crack);
+  // Sanskrit carved across the face, the same decal the causeway uses
+  const texture = makeInscriptionTexture();
+  if (texture) {
+    const carving = new THREE.Mesh(
+      new THREE.PlaneGeometry(SLAB_W * 0.82, SLAB_D * 0.42),
+      new THREE.MeshStandardMaterial({
+        map: texture, transparent: true, color: 0xffffff, roughness: 1.0,
+        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2
+      })
+    );
+    carving.rotation.x = -Math.PI / 2;
+    carving.position.set(0, SLAB_H - 0.02, 0);
+    slabGroup.add(carving);
+  }
+
+  // Chiselled side courses
+  [-1, 1].forEach(side => {
+    const course = new THREE.Mesh(new THREE.BoxGeometry(0.06, SLAB_H * 0.7, SLAB_D), slabEdgeMat);
+    course.position.set(side * (SLAB_W / 2), SLAB_H * 0.4, 0);
+    slabGroup.add(course);
   });
 
-  brokenGap.userData.role = 'obstacle';
-  brokenGap.userData.obstacleType = 'brokenRoad';
-  brokenGap.userData.zone = 2;
-  brokenGap.userData.bbox = { w: SLAB_W, h: 0.5, d: GAP + SLAB_D * 2 };
+  // Molten gold along the leading edge - the read at speed, and the warning
+  [-1, 1].forEach(side => {
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(SLAB_W + 0.05, 0.09, 0.1), goldMat);
+    edge.position.set(0, SLAB_H - 0.08, side * (SLAB_D / 2));
+    slabGroup.add(edge);
 
-  return brokenGap;
+    const spill = new THREE.Mesh(
+      new THREE.BoxGeometry(SLAB_W + 0.4, 0.012, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.22, depthWrite: false })
+    );
+    spill.position.set(0, 0.02, side * (SLAB_D / 2 + 0.18));
+    slabGroup.add(spill);
+  });
+
+  slabGroup.userData.role = 'obstacle';
+  slabGroup.userData.obstacleType = 'brokenRoad';
+  slabGroup.userData.zone = 2;
+  slabGroup.userData.bbox = { w: SLAB_W, h: SLAB_H, d: SLAB_D };
+
+  return slabGroup;
 }
 // ===== END ASSET =====
 
