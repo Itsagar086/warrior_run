@@ -12,10 +12,10 @@ function makeGroundSegment() {
   // #c4956a, shadowed joint #4a3524, divider gold #ffc247, moss #33452a.
   const segment = new THREE.Group();
 
-  const slabMat = new THREE.MeshStandardMaterial({ color: 0xc4956a, roughness: 0.88, metalness: 0.02 });
-  const slabAltMat = new THREE.MeshStandardMaterial({ color: 0xb8875d, roughness: 0.9, metalness: 0.02 });
-  const bevelMat = new THREE.MeshStandardMaterial({ color: 0xd8ab80, roughness: 0.8, metalness: 0.02 });
-  const jointMat = new THREE.MeshStandardMaterial({ color: 0x3a2718, roughness: 1.0 });
+  const slabMat = new THREE.MeshStandardMaterial({ color: 0xc4956a, roughness: 0.85, metalness: 0.0 });
+  const slabAltMat = new THREE.MeshStandardMaterial({ color: 0xceA277, roughness: 0.87, metalness: 0.0 });
+  const bevelMat = new THREE.MeshStandardMaterial({ color: 0xdcb389, roughness: 0.78, metalness: 0.0 });
+  const jointMat = new THREE.MeshStandardMaterial({ color: 0x4a3220, roughness: 1.0 });
   const kerbMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9, metalness: 0.03 });
   const mossMat = new THREE.MeshStandardMaterial({ color: 0x33452a, roughness: 1.0 });
   const goldMat = new THREE.MeshStandardMaterial({

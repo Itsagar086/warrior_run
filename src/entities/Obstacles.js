@@ -41,6 +41,20 @@ function makeFirePit() {
   embers.position.set(0, 0.14, 0);
   firePit.add(embers);
 
+  // Logs stacked across the coals, as in the reference campfire
+  const logMat = new THREE.MeshStandardMaterial({ color: 0x4a3221, roughness: 0.95 });
+  const logCharMat = new THREE.MeshStandardMaterial({
+    color: 0x231710, emissive: 0xff4400, emissiveIntensity: 0.5, roughness: 0.9
+  });
+  [[-0.18, 0.26, 0.5], [0.2, -0.22, -0.6], [0.0, 0.02, 1.35]].forEach(([lx, lz, rot], i) => {
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.075, 0.92, 7), i === 2 ? logCharMat : logMat);
+    log.position.set(lx, 0.26, lz);
+    log.rotation.z = Math.PI / 2;
+    log.rotation.y = rot;
+    log.castShadow = true;
+    firePit.add(log);
+  });
+
   // Three tongues of flame, offset off centre so they read as one fire
   const flames = [];
   const offsets = [

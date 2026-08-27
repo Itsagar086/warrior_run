@@ -24,9 +24,9 @@ export const FOG_COLOR = 0x0a0a2e;
 export const FOG_DENSITY = 0.018;
 
 const MOON_COLOR = 0xc8d8ff;
-const MOON_INTENSITY = 0.8;
+const MOON_INTENSITY = 1.55;
 const AMBIENT_COLOR = 0x0a0a2e;
-const AMBIENT_INTENSITY = 0.3;
+const AMBIENT_INTENSITY = 0.55;
 
 const TORCH_COLOR = 0xff6600;
 const TORCH_INTENSITY = 2;
@@ -45,7 +45,7 @@ export function setupLighting(scene, renderer) {
 
   // The engine's environment map is a bright IBL; dim it right down so metals
   // still catch a highlight without lifting the whole scene out of the dark.
-  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.12;
+  if ('environmentIntensity' in scene) scene.environmentIntensity = 0.2;
 
   scene.background = new THREE.Color(SKY_TOP_COLOR);
   scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
@@ -77,6 +77,12 @@ export function setupLighting(scene, renderer) {
   // Ambient: barely there, just enough that unlit faces are not pure black
   const ambient = new THREE.AmbientLight(AMBIENT_COLOR, AMBIENT_INTENSITY);
   scene.add(ambient);
+
+  // Cool sky over warm ground bounce. Without this the moonlit stone loses all
+  // its colour on the shadow side and the path reads brown instead of sand.
+  const sky = new THREE.HemisphereLight(0x8fa8d8, 0x3a2c1f, 0.75);
+  sky.position.set(0, 20, 0);
+  scene.add(sky);
 
   if (renderer && renderer.shadowMap) renderer.shadowMap.enabled = true;
 

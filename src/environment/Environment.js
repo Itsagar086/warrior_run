@@ -27,24 +27,25 @@ function makeMountKailash() {
     fog: false
   });
   const snowMat = new THREE.MeshStandardMaterial({
-    color: 0xf2f6ff,
-    emissive: 0xaecbff,
-    emissiveIntensity: 0.45,
+    color: 0xf7faff,
+    emissive: 0xc3daff,
+    emissiveIntensity: 0.6,
     roughness: 0.55,
     flatShading: true,
     fog: false
   });
 
-  // Four-sided pyramid body
-  const body = new THREE.Mesh(new THREE.ConeGeometry(120, 150, 4), rockMat);
+  // Four-sided pyramid body. Bigger and nearer than before: it is the
+  // destination, so it should dominate the end of the path.
+  const body = new THREE.Mesh(new THREE.ConeGeometry(150, 195, 4), rockMat);
   body.rotation.y = Math.PI / 4;
-  body.position.set(0, 72, 0);
+  body.position.set(0, 78, 0);
   kailash.add(body);
 
   // Snow-capped summit
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(74, 96, 4), snowMat);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(86, 113, 4), snowMat);
   cap.rotation.y = Math.PI / 4;
-  cap.position.set(0, 99, 0);
+  cap.position.set(0, 119, 0);
   kailash.add(cap);
 
   // Soft blue-white halo of divine light. A radial falloff plane rather than a
@@ -54,7 +55,7 @@ function makeMountKailash() {
   );
   if (glowTex) {
     const halo = new THREE.Mesh(
-      new THREE.PlaneGeometry(460, 460),
+      new THREE.PlaneGeometry(560, 560),
       new THREE.MeshBasicMaterial({
         map: glowTex,
         transparent: true,
@@ -64,13 +65,13 @@ function makeMountKailash() {
         fog: false
       })
     );
-    halo.position.set(0, 96, 8);
+    halo.position.set(0, 122, 8);
     halo.renderOrder = -1;
     kailash.add(halo);
   }
 
   // Lesser ridges either side so the peak sits in a range, not on a plain
-  [[-205, 0.62, 70], [215, 0.54, 95], [-330, 0.44, 130]].forEach(([x, s, z]) => {
+  [[-255, 0.62, 70], [265, 0.54, 95], [-390, 0.44, 130]].forEach(([x, s, z]) => {
     const ridge = new THREE.Mesh(new THREE.ConeGeometry(165 * s, 105 * s, 4), ridgeMat);
     ridge.rotation.y = Math.PI / 4;
     ridge.position.set(x, 50 * s, z);
@@ -306,44 +307,64 @@ function makeStonePedestal() {
   const carveMat = new THREE.MeshStandardMaterial({ color: 0xb2916c, roughness: 0.88 });
   const mossMat = new THREE.MeshStandardMaterial({ color: 0x33502a, roughness: 1.0 });
 
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.18, 1.15), stoneDarkMat);
-  plinth.position.set(0, 0.09, 0);
+  const H = 1.85;
+
+  // Stepped footing
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.14, 0.86), stoneDarkMat);
+  plinth.position.set(0, 0.07, 0);
   plinth.receiveShadow = true;
   pedestal.add(plinth);
 
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.78, 0.92), stoneMat);
-  body.position.set(0, 0.57, 0);
+  const step = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.12, 0.72), stoneMat);
+  step.position.set(0, 0.2, 0);
+  pedestal.add(step);
+
+  // Tall carved shaft - upright and narrow, so its silhouette is a shrine post
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.56, H - 0.5, 0.56), stoneMat);
+  body.position.set(0, 0.26 + (H - 0.5) / 2, 0);
   body.castShadow = true;
   body.receiveShadow = true;
   pedestal.add(body);
 
-  // Recessed carved panel on each face
-  [[0, 0.475], [0, -0.475], [0.475, 0], [-0.475, 0]].forEach(([x, z]) => {
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(x === 0 ? 0.6 : 0.02, 0.44, x === 0 ? 0.02 : 0.6), stoneDarkMat);
-    panel.position.set(x, 0.57, z);
+  // Deep carved panel down each face, with a relief inside it
+  [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([sx, sz]) => {
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(sx === 0 ? 0.38 : 0.03, H - 0.85, sx === 0 ? 0.03 : 0.38),
+      stoneDarkMat
+    );
+    panel.position.set(sx * 0.28, 0.26 + (H - 0.5) / 2, sz * 0.28);
     pedestal.add(panel);
 
-    const glyph = new THREE.Mesh(new THREE.BoxGeometry(x === 0 ? 0.34 : 0.03, 0.05, x === 0 ? 0.03 : 0.34), carveMat);
-    glyph.position.set(x * 1.02, 0.66, z * 1.02);
-    pedestal.add(glyph);
+    for (let i = 0; i < 3; i++) {
+      const relief = new THREE.Mesh(
+        new THREE.BoxGeometry(sx === 0 ? 0.22 : 0.02, 0.05, sx === 0 ? 0.02 : 0.22),
+        carveMat
+      );
+      relief.position.set(sx * 0.295, 0.62 + i * 0.3, sz * 0.295);
+      pedestal.add(relief);
+    }
   });
 
-  // Chamfered cap
-  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.16, 1.06), stoneMat);
-  cap.position.set(0, 1.04, 0);
+  // Flared cap and cornice
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.1, 0.64), stoneDarkMat);
+  neck.position.set(0, H - 0.2, 0);
+  pedestal.add(neck);
+
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.16, 0.8), stoneMat);
+  cap.position.set(0, H - 0.07, 0);
   cap.castShadow = true;
   pedestal.add(cap);
 
-  // Moss lying in flat patches over the crown
-  const patches = [[-0.2, 0.16, 0.42, 0.3], [0.26, 0.1, -0.3, 0.34], [0.05, 0.34, 0.1, 0.26], [-0.34, 0.24, -0.18, 0.22]];
+  // Moss over the crown and creeping up from the base
+  const patches = [[-0.14, 0.26, 0.2, 0.22], [0.18, 0.22, -0.16, 0.26], [0.02, 0.3, 0.02, 0.2]];
   patches.forEach(([x, w, z, d]) => {
     const moss = new THREE.Mesh(new THREE.BoxGeometry(w, 0.035, d), mossMat);
-    moss.position.set(x, 1.13, z);
+    moss.position.set(x, H + 0.02, z);
     pedestal.add(moss);
   });
 
-  const mossSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.12, 0.94), mossMat);
-  mossSkirt.position.set(0, 0.24, 0);
+  const mossSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.3, 0.58), mossMat);
+  mossSkirt.position.set(0, 0.42, 0);
   pedestal.add(mossSkirt);
 
   pedestal.userData.role = 'scenery';
@@ -451,15 +472,15 @@ export function createEnvironment(scene) {
 
   // Dark forest floor either side of the causeway
   const floorMat = new THREE.MeshStandardMaterial({ color: 0x14200f, roughness: 1.0 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(220, 420), floorMat);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(900, 1100), floorMat);
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, -0.12, -120);
+  floor.position.set(0, -0.12, -380);
   floor.receiveShadow = true;
   scene.add(floor);
 
   // Distant Mount Kailash
   const kailash = makeMountKailash();
-  kailash.position.set(0, 0, -430);
+  kailash.position.set(0, 0, -520);
   scene.add(kailash);
 
   // Temple pillars, both sides, every 15 units
