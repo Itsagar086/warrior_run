@@ -190,10 +190,8 @@ export function launchProjectile(type, laneX, startY) {
 export function collectPowerOrb(orb) {
   orb.visible = false;
   state.shakti = Math.min(state.maxShakti, state.shakti + CONFIG.SHAKTI_PER_ORB);
-  // Cycle power
-  const powerList = ['sudarshan_chakra', 'trishul', 'vishnu_shield'];
-  state.activePower = powerList[state.powerCycleIndex % powerList.length];
-  state.powerCycleIndex++;
+  // Each pickup grants the power it depicts, so what you see is what you get
+  state.activePower = orb.userData.power || 'sudarshan_chakra';
 
   playSound('power');
   spawnFX(orb.position, '#4de0c0', 20);

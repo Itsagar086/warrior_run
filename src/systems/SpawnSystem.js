@@ -3,8 +3,11 @@
 // per-frame scrolling and despawning of everything spawned.
 import { CONFIG } from '../utils/Constants.js';
 import { state } from '../core/GameState.js';
-import { swing } from '../utils/AnimationHelper.js';
-import { makeOmGlyph, makeRudrakshaBead, makePowerOrb } from '../utils/AssetFactory.js';
+import {
+  makeOmGlyph, makeRudrakshaBead,
+  makeChakraPickup, makeTrishulPickup, makeShieldPickup,
+  updateOmGlyph, updateRudraksha, updatePowerPickup
+} from '../entities/Collectibles.js';
 import { getObstaclePool, updateBoulder, updateFirePit } from '../entities/Obstacles.js';
 import { updateCobra } from '../entities/CobraSnake.js';
 import { getPlayer } from '../entities/Player.js';
@@ -40,7 +43,9 @@ export function initSpawnSystem(scene, gameClock) {
     window.__gameEntities.registerCollectible(om);
   }
 
-  for (let i = 0; i < 4; i++) {
+  // Beads come in arcs of up to five, and an arc stays on screen a long time,
+  // so the pool has to hold two full arcs plus slack.
+  for (let i = 0; i < 12; i++) {
     const r = makeRudrakshaBead();
     r.visible = false;
     scene.add(r);
@@ -48,13 +53,17 @@ export function initSpawnSystem(scene, gameClock) {
     window.__gameEntities.registerCollectible(r);
   }
 
-  for (let i = 0; i < 4; i++) {
-    const orb = makePowerOrb();
-    orb.visible = false;
-    scene.add(orb);
-    powerOrbPool.push(orb);
-    window.__gameEntities.registerCollectible(orb);
-  }
+  // One pool holding all three power pickups; each carries the power it grants.
+  [makeChakraPickup, makeTrishulPickup, makeShieldPickup].forEach(build => {
+    for (let i = 0; i < 2; i++) {
+      const pickup = build();
+      pickup.visible = false;
+      pickup.userData.baseY = 1.2;
+      scene.add(pickup);
+      powerOrbPool.push(pickup);
+      window.__gameEntities.registerCollectible(pickup);
+    }
+  });
 }
 
 export function spawnObstacleAt(z) {
@@ -105,18 +114,42 @@ export function spawnObstacleAt(z) {
   }
 }
 
+// Beads arrive in a curved run of 3-5 rather than singly. Two shapes: a sweep
+// that carries the devotee from one lane to another, and a jump arc that peaks
+// where he would be at the top of a jump - both reward committing to a line.
+function spawnRudrakshaArc(z) {
+  const count = 3 + Math.floor(Math.random() * 3);   // 3, 4 or 5
+  const free = rudrakshaPool.filter(r => !r.visible);
+  if (free.length < count) return false;
+
+  const sweep = Math.random() < 0.5;
+  const fromLane = Math.floor(Math.random() * 3);
+  const toLane = sweep
+    ? (fromLane + (Math.random() < 0.5 ? 1 : 2)) % 3
+    : fromLane;
+  const spacing = 2.4;
+
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0 : i / (count - 1);
+    // Ease the lateral move so the line curves instead of stepping across
+    const curve = 0.5 - Math.cos(t * Math.PI) * 0.5;
+    const x = CONFIG.LANES[fromLane] + (CONFIG.LANES[toLane] - CONFIG.LANES[fromLane]) * curve;
+    // The jump arc lifts through the middle; the sweep stays at running height
+    const y = sweep ? 1.1 : 1.1 + Math.sin(t * Math.PI) * 1.15;
+
+    const bead = free[i];
+    bead.userData.baseY = y;
+    bead.position.set(x, y, z - i * spacing);
+    bead.visible = true;
+  }
+  return true;
+}
+
 export function spawnCollectibleAt(z) {
-  // Chance for rare Rudraksha vs Om Glyphs
-  if (Math.random() < 0.16) {
-    const freeR = rudrakshaPool.find(r => !r.visible);
-    if (freeR) {
-      // Rare rudraksha spawns off-lane or tricky edge
-      const sideOffsets = [-3.1, -2.2, 0, 2.2, 3.1];
-      const rx = sideOffsets[Math.floor(Math.random() * sideOffsets.length)];
-      freeR.position.set(rx, 1.1, z);
-      freeR.visible = true;
-      return;
-    }
+  // Bead arcs are rare: each one is worth several singles, so the rate is set
+  // to keep beads-per-metre about where it was when they spawned alone.
+  if (Math.random() < 0.05 && spawnRudrakshaArc(z)) {
+    return;
   }
 
   // Standard Om Glyph line
@@ -128,10 +161,18 @@ export function spawnCollectibleAt(z) {
   }
 }
 
-export function spawnPowerOrbAt(z) {
-  const freeOrb = powerOrbPool.find(o => !o.visible);
+export const POWER_CYCLE = ['sudarshan_chakra', 'trishul', 'vishnu_shield'];
+
+function spawnPowerOrbAt(z) {
+  // Cycle which power is offered, so a run hands out all three in turn rather
+  // than leaving it to chance.
+  const wanted = POWER_CYCLE[state.powerCycleIndex % POWER_CYCLE.length];
+  let freeOrb = powerOrbPool.find(o => !o.visible && o.userData.power === wanted);
+  if (!freeOrb) freeOrb = powerOrbPool.find(o => !o.visible);
   if (freeOrb) {
+    state.powerCycleIndex++;
     const laneX = CONFIG.LANES[Math.floor(Math.random() * 3)];
+    freeOrb.userData.baseY = 1.2;
     freeOrb.position.set(laneX, 1.2, z);
     freeOrb.visible = true;
   }
@@ -211,7 +252,7 @@ export function updateCollectibles(dt, scrollDelta) {
   omPool.forEach(om => {
     if (om.visible) {
       om.position.z += scrollDelta;
-      om.rotation.y += dt * 3.5;
+      updateOmGlyph(om, dt);
 
       const dx = Math.abs(player.position.x - om.position.x);
       const dz = Math.abs(player.position.z - om.position.z);
@@ -228,8 +269,7 @@ export function updateCollectibles(dt, scrollDelta) {
   rudrakshaPool.forEach(r => {
     if (r.visible) {
       r.position.z += scrollDelta;
-      r.rotation.y += dt * 2.5;
-      r.position.y = 1.1 + swing(clock.getElapsedTime() * 4, 0.15);
+      updateRudraksha(r, dt, clock.getElapsedTime());
 
       const dx = Math.abs(player.position.x - r.position.x);
       const dz = Math.abs(player.position.z - r.position.z);
@@ -245,7 +285,7 @@ export function updateCollectibles(dt, scrollDelta) {
   powerOrbPool.forEach(orb => {
     if (orb.visible) {
       orb.position.z += scrollDelta;
-      orb.rotation.y += dt * 3.0;
+      updatePowerPickup(orb, dt, clock.getElapsedTime());
 
       const dx = Math.abs(player.position.x - orb.position.x);
       const dz = Math.abs(player.position.z - orb.position.z);
