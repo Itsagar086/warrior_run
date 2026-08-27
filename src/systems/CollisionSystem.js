@@ -10,6 +10,7 @@ import { getPlayer } from '../entities/Player.js';
 import { playSound } from './AudioSystem.js';
 import { spawnFX } from './FXSystem.js';
 import { registerPathMistake } from '../entities/NagaChaser.js';
+import { asuraDeathBurst } from '../entities/AsuraDemon.js';
 import { endRun } from './ScoreSystem.js';
 import { shakeCamera } from '../core/CameraRig.js';
 
@@ -61,7 +62,8 @@ export function resolveObstacleCollision(obs, oType) {
     // Shield protection absorbs hit completely
     if (state.shieldTimer > 0) {
       obs.visible = false;
-      spawnFX(obs.position, '#4de0c0', 20);
+      if (obs.userData.obstacleType === 'asura') asuraDeathBurst(obs, spawnFX);
+      else spawnFX(obs.position, '#4de0c0', 20);
       playSound('blast');
       state.punya += 50 * state.combo;
       return 'skip';

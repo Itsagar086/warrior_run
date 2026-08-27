@@ -9,6 +9,7 @@ import { showBanner } from '../ui/HUD.js';
 import { setShieldVisible } from '../entities/Player.js';
 import { resolveNagaChase } from '../entities/NagaChaser.js';
 import { getObstaclePool } from '../entities/Obstacles.js';
+import { asuraDeathBurst } from '../entities/AsuraDemon.js';
 
 // ===== ASSET id=trishul-bolt label="Flying Trishul Bolt" role=projectile =====
 function makeTrishulProjectile() {
@@ -222,7 +223,8 @@ export function updateProjectiles(dt) {
             obs.visible = false;
             state.punya += 50 * state.combo;
             playSound('blast');
-            spawnFX(obs.position, '#ffd700', 25);
+            if (obs.userData.obstacleType === 'asura') asuraDeathBurst(obs, spawnFX);
+            else spawnFX(obs.position, '#ffd700', 25);
             break;
           }
         }
