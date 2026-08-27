@@ -13,7 +13,15 @@ import { makeRivalNaga } from '../entities/NagaChaser.js';
 import { makePillarObstacle, makeFirePit, makeBoulder, makeBrokenRoad } from '../entities/Obstacles.js';
 import { makeGroundSegment } from '../environment/Track.js';
 import { makeTrishulProjectile } from '../systems/PowerSystem.js';
-import { makeMountKailash, makeRoadsideShrine } from '../environment/Environment.js';
+import {
+  makeMountKailash,
+  makeSkyDome,
+  makeTemplePillar,
+  makeTree,
+  makeVineCurtain,
+  makeTorchBrazier,
+} from '../environment/Environment.js';
+import { makeInscription } from '../environment/Track.js';
 
 // ===== ASSET id=rudraksha-bead label="Rudraksha Bead Cluster" role=collectible =====
 function makeRudrakshaBead() {
@@ -324,7 +332,12 @@ export {
   makePowerOrb,
   makeRivalNaga,
   makeMountKailash,
-  makeRoadsideShrine,
+  makeSkyDome,
+  makeTemplePillar,
+  makeTree,
+  makeVineCurtain,
+  makeTorchBrazier,
+  makeInscription,
 };
 
 // Legacy global registry, kept so tooling that pokes at window.__game still works.
@@ -344,5 +357,10 @@ window.__game.factories = Object.assign(window.__game.factories || {}, {
   makePowerOrb,
   makeRivalNaga,
   makeMountKailash,
-  makeRoadsideShrine,
+  makeSkyDome,
+  makeTemplePillar,
+  makeTree,
+  makeVineCurtain,
+  makeTorchBrazier,
+  makeInscription,
 });

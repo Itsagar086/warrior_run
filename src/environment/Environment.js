@@ -1,143 +1,521 @@
-// Everything flanking the road: the abyss below, distant Mount Kailash, and
-// the recycled roadside shrines and decorative temple pillars.
+// Everything flanking and behind the path: ancient temple pillars wrapped in
+// vines, the dark forest canopy behind them, hanging vine curtains, the fire
+// torches that light the way, the night sky dome and Mount Kailash on the
+// horizon.
 import * as THREE from 'three';
-import { makePillarObstacle } from '../entities/Obstacles.js';
+import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, createTorchLight } from './Lighting.js';
+
+// A soft radial falloff texture, for glows that must not read as a flat disc.
+// Returns null where there is no 2D canvas (headless), and callers then skip
+// the glow rather than drawing a hard circle.
+function makeRadialGlowTexture() {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0.0, 'rgba(205, 228, 255, 0.55)');
+    g.addColorStop(0.35, 'rgba(150, 195, 255, 0.18)');
+    g.addColorStop(1.0, 'rgba(110, 165, 255, 0.0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(canvas);
+  } catch (e) {
+    return null;
+  }
+}
 
 // ===== ASSET id=mount-kailash-peak label="Mount Kailash Distant Peak" role=scenery =====
 function makeMountKailash() {
+  // ART DIRECTION: silhouette = a great four-sided white pyramid peak standing
+  // alone on the horizon; signature = snow-bright faces, a soft blue-white halo
+  // of divine light around it, lesser ridges falling away at its feet.
+  // Everything here opts out of fog so the peak stays visible through the mist.
   const kailash = new THREE.Group();
 
-  const mountainMat = new THREE.MeshStandardMaterial({
-    color: '#343859',
-    roughness: 0.9,
-    metalness: 0.1,
-    flatShading: true
+  const rockMat = new THREE.MeshStandardMaterial({
+    color: 0xa8b3cc,
+    roughness: 0.95,
+    metalness: 0.0,
+    flatShading: true,
+    fog: false
+  });
+  const ridgeMat = new THREE.MeshStandardMaterial({
+    color: 0x49536f,
+    roughness: 1.0,
+    flatShading: true,
+    fog: false
   });
   const snowMat = new THREE.MeshStandardMaterial({
-    color: '#edf5ff',
-    emissive: '#bed2fa',
-    emissiveIntensity: 0.35,
-    roughness: 0.4
-  });
-  const auraMat = new THREE.MeshBasicMaterial({
-    color: '#ffd700',
-    transparent: true,
-    opacity: 0.18
+    color: 0xf2f6ff,
+    emissive: 0xaecbff,
+    emissiveIntensity: 0.45,
+    roughness: 0.55,
+    flatShading: true,
+    fog: false
   });
 
-  const baseGeo = new THREE.ConeGeometry(120, 140, 7);
-  const baseMesh = new THREE.Mesh(baseGeo, mountainMat);
-  baseMesh.position.set(0, 70, 0);
-  kailash.add(baseMesh);
+  // Four-sided pyramid body
+  const body = new THREE.Mesh(new THREE.ConeGeometry(120, 150, 4), rockMat);
+  body.rotation.y = Math.PI / 4;
+  body.position.set(0, 72, 0);
+  kailash.add(body);
 
-  const snowGeo = new THREE.ConeGeometry(60, 65, 7);
-  const snowMesh = new THREE.Mesh(snowGeo, snowMat);
-  snowMesh.position.set(0, 108, 0);
-  kailash.add(snowMesh);
+  // Snow-capped summit
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(74, 96, 4), snowMat);
+  cap.rotation.y = Math.PI / 4;
+  cap.position.set(0, 99, 0);
+  kailash.add(cap);
 
-  const auraMesh = new THREE.Mesh(new THREE.SphereGeometry(110, 16, 16), auraMat);
-  auraMesh.position.set(0, 120, -10);
-  kailash.add(auraMesh);
+  // Soft blue-white halo of divine light. A radial falloff plane rather than a
+  // sphere: an unlit sphere at this distance just reads as a hard flat disc.
+  const glowTex = makeRadialGlowTexture();
+  if (glowTex) {
+    const halo = new THREE.Mesh(
+      new THREE.PlaneGeometry(460, 460),
+      new THREE.MeshBasicMaterial({
+        map: glowTex,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        fog: false
+      })
+    );
+    halo.position.set(0, 96, 8);
+    halo.renderOrder = -1;
+    kailash.add(halo);
+  }
+
+  // Lesser ridges either side so the peak sits in a range, not on a plain
+  [[-205, 0.62, 70], [215, 0.54, 95], [-330, 0.44, 130]].forEach(([x, s, z]) => {
+    const ridge = new THREE.Mesh(new THREE.ConeGeometry(165 * s, 105 * s, 4), ridgeMat);
+    ridge.rotation.y = Math.PI / 4;
+    ridge.position.set(x, 50 * s, z);
+    kailash.add(ridge);
+  });
 
   kailash.userData.role = 'scenery';
   return kailash;
 }
 // ===== END ASSET =====
 
-// ===== ASSET id=roadside-shrine label="Roadside Shrine" role=scenery =====
-function makeRoadsideShrine() {
-  const shrine = new THREE.Group();
+// ===== ASSET id=night-sky-dome label="Night Sky" role=scenery =====
+function makeSkyDome() {
+  // ART DIRECTION: dark blue-purple night, near-black overhead grading to a
+  // warmer indigo at the horizon. Unlit, unfogged, drawn behind everything.
+  const uniforms = {
+    topColor: { value: new THREE.Color(SKY_TOP_COLOR) },
+    horizonColor: { value: new THREE.Color(SKY_HORIZON_COLOR) }
+  };
 
-  const stoneMat = new THREE.MeshStandardMaterial({ color: '#4a445c', roughness: 0.85 });
-  const jadeLightMat = new THREE.MeshStandardMaterial({
-    color: '#4de0c0',
-    emissive: '#4de0c0',
-    emissiveIntensity: 1.2,
-    roughness: 0.2
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    vertexShader: `
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPosition.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 topColor;
+      uniform vec3 horizonColor;
+      varying vec3 vWorldPosition;
+      void main() {
+        float h = normalize(vWorldPosition).y;
+        float t = clamp(pow(max(h, 0.0), 0.55), 0.0, 1.0);
+        gl_FragColor = vec4(mix(horizonColor, topColor, t), 1.0);
+      }
+    `
   });
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.2), stoneMat);
-  base.position.set(0, 0.2, 0);
-  shrine.add(base);
-
-  const pillars = [
-    [-0.4, -0.4], [-0.4, 0.4], [0.4, -0.4], [0.4, 0.4]
-  ];
-  pillars.forEach(([px, pz]) => {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.9, 6), stoneMat);
-    post.position.set(px, 0.85, pz);
-    shrine.add(post);
-  });
-
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(0.9, 0.6, 4), stoneMat);
-  roof.rotation.y = Math.PI / 4;
-  roof.position.set(0, 1.6, 0);
-  shrine.add(roof);
-
-  const jadeLamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.35, 8), jadeLightMat);
-  jadeLamp.position.set(0, 0.75, 0);
-  shrine.add(jadeLamp);
-
-  shrine.userData.role = 'scenery';
-  return shrine;
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(620, 24, 16), material);
+  sky.renderOrder = -1;
+  sky.userData.role = 'scenery';
+  return sky;
 }
 // ===== END ASSET =====
 
-const SHRINE_COUNT = 10;
-const DECO_PILLAR_COUNT = 10;
-const shrinePool = [];
-const decoPillarPool = [];
+// ===== ASSET id=temple-pillar label="Ancient Temple Pillar" role=scenery =====
+function makeTemplePillar() {
+  // ART DIRECTION: silhouette = tall square temple pillar with a stepped
+  // capital, standing shoulder-height to the trees; signature = carved relief
+  // bands, weathered warm grey stone, dark green vines climbing the shaft.
+  const pillar = new THREE.Group();
+
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.92, metalness: 0.02 });
+  const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x6d5a43, roughness: 0.95, metalness: 0.02 });
+  const mossMat = new THREE.MeshStandardMaterial({ color: 0x38512e, roughness: 1.0 });
+  const vineMat = new THREE.MeshStandardMaterial({ color: 0x1e3d22, roughness: 0.95 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x27522c, roughness: 0.95 });
+
+  const shaftHeight = 4.6;
+
+  // Stepped plinth
+  const base1 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.32, 1.5), stoneDarkMat);
+  base1.position.set(0, 0.16, 0);
+  pillar.add(base1);
+
+  const base2 = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.26, 1.25), stoneMat);
+  base2.position.set(0, 0.45, 0);
+  pillar.add(base2);
+
+  // Main shaft
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.95, shaftHeight, 0.95), stoneMat);
+  shaft.position.set(0, 0.58 + shaftHeight / 2, 0);
+  shaft.castShadow = true;
+  pillar.add(shaft);
+
+  // Carved relief bands down the shaft
+  for (let i = 0; i < 3; i++) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.42, 1.02), stoneDarkMat);
+    band.position.set(0, 1.35 + i * 1.35, 0);
+    pillar.add(band);
+  }
+
+  // Stepped capital
+  const capital1 = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.26, 1.28), stoneMat);
+  capital1.position.set(0, shaftHeight + 0.72, 0);
+  pillar.add(capital1);
+
+  const capital2 = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.3, 1.62), stoneDarkMat);
+  capital2.position.set(0, shaftHeight + 1.0, 0);
+  pillar.add(capital2);
+
+  // Moss creeping up from the base
+  const moss = new THREE.Mesh(new THREE.BoxGeometry(0.99, 0.7, 0.99), mossMat);
+  moss.position.set(0, 1.0, 0);
+  moss.scale.set(1.01, 1, 1.01);
+  pillar.add(moss);
+
+  // Vines spiralling up the shaft
+  for (let v = 0; v < 2; v++) {
+    const points = [];
+    const dir = v === 0 ? 1 : -1;
+    for (let i = 0; i <= 10; i++) {
+      const t = i / 10;
+      const angle = dir * t * Math.PI * 2.4 + v * 2.0;
+      const y = 0.4 + t * (shaftHeight + 0.4);
+      points.push(new THREE.Vector3(Math.cos(angle) * 0.52, y, Math.sin(angle) * 0.52));
+    }
+    const vine = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 40, 0.035, 5, false),
+      vineMat
+    );
+    pillar.add(vine);
+
+    // A few leaf clusters along it
+    for (let l = 1; l < 5; l++) {
+      const p = points[l * 2];
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 6), leafMat);
+      leaf.position.copy(p);
+      leaf.scale.set(1.3, 0.6, 1.0);
+      pillar.add(leaf);
+    }
+  }
+
+  pillar.userData.role = 'scenery';
+  return pillar;
+}
+// ===== END ASSET =====
+
+// ===== ASSET id=canopy-tree label="Dark Canopy Tree" role=scenery =====
+function makeTree() {
+  // ART DIRECTION: silhouette = heavy rounded canopy on a slim dark trunk,
+  // massed into a wall of forest behind the pillars; signature = overlapping
+  // dark green spheres, near-black trunk, sways from the base.
+  const tree = new THREE.Group();
+
+  // Everything hangs off the trunk group so swaying it moves the whole tree
+  const trunkGroup = new THREE.Group();
+  trunkGroup.name = 'trunk';
+  tree.add(trunkGroup);
+
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x33241a, roughness: 1.0 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x1d4a2a, roughness: 0.98 });
+  const leafDarkMat = new THREE.MeshStandardMaterial({ color: 0x143a20, roughness: 1.0 });
+
+  const height = 3.4 + Math.random() * 1.8;
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.27, height, 7), barkMat);
+  trunk.position.set(0, height / 2, 0);
+  trunkGroup.add(trunk);
+
+  // Overlapping canopy spheres
+  const blobs = [
+    [0, height + 0.5, 0, 1.65],
+    [-0.85, height + 0.15, 0.35, 1.15],
+    [0.9, height + 0.25, -0.3, 1.25],
+    [0.1, height + 1.35, 0.15, 1.0]
+  ];
+  blobs.forEach(([x, y, z, r], i) => {
+    const blob = new THREE.Mesh(
+      new THREE.SphereGeometry(r, 9, 8),
+      i % 2 === 0 ? leafMat : leafDarkMat
+    );
+    blob.position.set(x, y, z);
+    blob.scale.set(1, 0.82, 1);
+    trunkGroup.add(blob);
+  });
+
+  // Per-tree phase so the canopy does not sway in lockstep
+  tree.userData.swayPhase = Math.random() * Math.PI * 2;
+  tree.userData.swayAmount = 0.018 + Math.random() * 0.022;
+  tree.userData.role = 'scenery';
+  return tree;
+}
+// ===== END ASSET =====
+
+// ===== ASSET id=vine-curtain label="Hanging Vine Curtain" role=scenery =====
+function makeVineCurtain() {
+  // ART DIRECTION: a ragged sheet of creeper hanging between the trees, broken
+  // into strands of different lengths so the silhouette stays organic.
+  const curtain = new THREE.Group();
+
+  const vineMat = new THREE.MeshStandardMaterial({ color: 0x1a3520, roughness: 0.98 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x214726, roughness: 0.98 });
+
+  const strands = 7;
+  for (let i = 0; i < strands; i++) {
+    const x = -1.5 + (i / (strands - 1)) * 3.0;
+    const len = 1.4 + Math.random() * 2.6;
+
+    const points = [];
+    for (let s = 0; s <= 5; s++) {
+      const t = s / 5;
+      points.push(new THREE.Vector3(
+        x + Math.sin(t * 3 + i) * 0.12,
+        -t * len,
+        Math.cos(t * 2 + i) * 0.1
+      ));
+    }
+    const strand = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 12, 0.025, 4, false),
+      vineMat
+    );
+    curtain.add(strand);
+
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), leafMat);
+    tip.position.set(x, -len, 0);
+    tip.scale.set(1.2, 0.7, 1.0);
+    curtain.add(tip);
+  }
+
+  curtain.userData.role = 'scenery';
+  return curtain;
+}
+// ===== END ASSET =====
+
+// ===== ASSET id=path-torch label="Path Fire Torch" role=scenery =====
+function makeTorchBrazier() {
+  // ART DIRECTION: silhouette = a carved stone bowl on a mossy pedestal with an
+  // open fire burning in it; signature = warm orange flame against cold stone,
+  // the only warm light on the path. Carries its own point light.
+  const torch = new THREE.Group();
+
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.92 });
+  const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x6d5a43, roughness: 0.95 });
+  const mossMat = new THREE.MeshStandardMaterial({ color: 0x38512e, roughness: 1.0 });
+  const emberMat = new THREE.MeshStandardMaterial({
+    color: 0x3a0d00, emissive: 0xff3300, emissiveIntensity: 1.1, roughness: 0.8
+  });
+  const flameOuterMat = new THREE.MeshBasicMaterial({
+    color: 0xff6a12, transparent: true, opacity: 0.55,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const flameCoreMat = new THREE.MeshBasicMaterial({
+    color: 0xffc46a, transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.28, 0.95), stoneDarkMat);
+  base.position.set(0, 0.14, 0);
+  torch.add(base);
+
+  const column = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 1.0, 8), stoneMat);
+  column.position.set(0, 0.78, 0);
+  column.castShadow = true;
+  torch.add(column);
+
+  const mossRing = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.16, 8), mossMat);
+  mossRing.position.set(0, 0.5, 0);
+  torch.add(mossRing);
+
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.32, 0.34, 10), stoneMat);
+  bowl.position.set(0, 1.42, 0);
+  torch.add(bowl);
+
+  const embers = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1, 10), emberMat);
+  embers.position.set(0, 1.58, 0);
+  torch.add(embers);
+
+  // Flame group: the light flickers it via userData.flame
+  const flame = new THREE.Group();
+  flame.position.set(0, 1.62, 0);
+  torch.add(flame);
+
+  const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.5, 7), flameOuterMat);
+  flameOuter.position.set(0, 0.25, 0);
+  flame.add(flameOuter);
+
+  const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 6), flameCoreMat);
+  flameCore.position.set(0, 0.17, 0);
+  flame.add(flameCore);
+
+  // The warm point light this torch throws onto the path
+  const light = createTorchLight();
+  light.position.set(0, 1.95, 0);
+  light.userData.flame = flame;
+  torch.add(light);
+
+  torch.userData.role = 'scenery';
+  return torch;
+}
+// ===== END ASSET =====
+
+const PILLAR_SPACING = 15.0;
+const PILLAR_PAIRS = 8;
+const PILLAR_OFFSET_X = 6.2;
+
+const TORCH_SPACING = 30.0;
+const TORCH_PAIRS = 3;
+const TORCH_OFFSET_X = 5.4;
+
+const TREE_SPACING = 9.0;
+const TREE_ROWS = 12;
+const TREE_OFFSET_X = 10.5;
+
+const CURTAIN_SPACING = 36.0;
+const CURTAIN_COUNT = 4;
+
+const pillarPool = [];
+const torchPool = [];
+const treePool = [];
+const curtainPool = [];
+
+let swayTime = 0;
 
 export function createEnvironment(scene) {
-  // Side Mist / Abyss Plane below
-  const abyssMat = new THREE.MeshBasicMaterial({ color: '#131122' });
-  const abyssPlane = new THREE.Mesh(new THREE.PlaneGeometry(160, 240), abyssMat);
-  abyssPlane.rotation.x = -Math.PI / 2;
-  abyssPlane.position.set(0, -1.8, -40);
-  scene.add(abyssPlane);
+  // Night sky dome
+  scene.add(makeSkyDome());
 
-  // Distant Mount Kailash Silhouette
+  // Dark forest floor either side of the causeway
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x14200f, roughness: 1.0 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(220, 420), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, -0.12, -120);
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Distant Mount Kailash
   const kailash = makeMountKailash();
-  kailash.position.set(0, 0, -420);
+  kailash.position.set(0, 0, -430);
   scene.add(kailash);
 
-  // Roadside Shrines Pool
-  for (let i = 0; i < SHRINE_COUNT; i++) {
-    const s = makeRoadsideShrine();
-    const side = (i % 2 === 0) ? -4.6 : 4.6;
-    s.position.set(side, 0, -i * 18.0);
-    scene.add(s);
-    shrinePool.push(s);
+  // Temple pillars, both sides, every 15 units
+  for (let i = 0; i < PILLAR_PAIRS; i++) {
+    for (const side of [-1, 1]) {
+      const p = makeTemplePillar();
+      p.position.set(side * PILLAR_OFFSET_X, 0, -i * PILLAR_SPACING + 10);
+      p.rotation.y = side < 0 ? 0.06 : -0.06;
+      scene.add(p);
+      pillarPool.push(p);
+    }
   }
 
-  // Roadside Decorative Pillars (Scenery)
-  for (let i = 0; i < DECO_PILLAR_COUNT; i++) {
-    const p = makePillarObstacle();
-    p.userData.role = 'scenery'; // prevent collision
-    const side = (i % 2 === 0) ? -4.8 : 4.8;
-    p.position.set(side, 0, -i * 22.0 - 10);
-    scene.add(p);
-    decoPillarPool.push(p);
+  // Fire torches, both sides, every 30 units
+  for (let i = 0; i < TORCH_PAIRS; i++) {
+    for (const side of [-1, 1]) {
+      const t = makeTorchBrazier();
+      t.position.set(side * TORCH_OFFSET_X, 0, -i * TORCH_SPACING - 4);
+      scene.add(t);
+      torchPool.push(t);
+    }
   }
 
-  return { shrinePool, decoPillarPool };
+  // Dense tree canopy behind the pillars, two staggered rows per side
+  for (let i = 0; i < TREE_ROWS; i++) {
+    for (const side of [-1, 1]) {
+      // A back-row tree only every other slot: enough to close the canopy
+      // without doubling the tree count.
+      const rows = (i % 2 === 0) ? 2 : 1;
+      for (let row = 0; row < rows; row++) {
+        const t = makeTree();
+        const x = side * (TREE_OFFSET_X + row * 5.0 + Math.random() * 2.2);
+        const z = -i * TREE_SPACING + 12 - row * 4.5 - Math.random() * 3.0;
+        t.position.set(x, 0, z);
+        scene.add(t);
+        treePool.push(t);
+      }
+    }
+  }
+
+  // Occasional vine curtains hanging between the trees
+  for (let i = 0; i < CURTAIN_COUNT; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const c = makeVineCurtain();
+    c.position.set(side * (TREE_OFFSET_X + 1.5), 5.2, -i * CURTAIN_SPACING - 8);
+    scene.add(c);
+    curtainPool.push(c);
+  }
+
+  return { pillarPool, torchPool, treePool, curtainPool };
 }
 
-// Scrolls the roadside scenery and wraps it around behind the player.
-export function updateEnvironment(scrollDelta) {
+// Scrolls the roadside scenery, wraps it around behind the player, and sways
+// the canopy.
+export function updateEnvironment(scrollDelta, dt = 0) {
+  swayTime += dt;
+
   // Update Roadside Scenery Scroll
-  shrinePool.forEach(s => {
-    s.position.z += scrollDelta;
-    if (s.position.z > 14) {
-      s.position.z -= SHRINE_COUNT * 18.0;
-    }
-  });
-  decoPillarPool.forEach(p => {
+  pillarPool.forEach(p => {
     p.position.z += scrollDelta;
     if (p.position.z > 14) {
-      p.position.z -= DECO_PILLAR_COUNT * 22.0;
+      p.position.z -= PILLAR_PAIRS * PILLAR_SPACING;
     }
+  });
+
+  torchPool.forEach(t => {
+    t.position.z += scrollDelta;
+    if (t.position.z > 14) {
+      t.position.z -= TORCH_PAIRS * TORCH_SPACING;
+    }
+  });
+
+  treePool.forEach(t => {
+    t.position.z += scrollDelta;
+    if (t.position.z > 16) {
+      t.position.z -= TREE_ROWS * TREE_SPACING;
+    }
+    const trunk = t.children[0];
+    if (trunk) {
+      trunk.rotation.z = Math.sin(swayTime + t.userData.swayPhase) * t.userData.swayAmount;
+      trunk.rotation.x = Math.sin(swayTime * 0.7 + t.userData.swayPhase) * t.userData.swayAmount * 0.6;
+    }
+  });
+
+  curtainPool.forEach(c => {
+    c.position.z += scrollDelta;
+    if (c.position.z > 16) {
+      c.position.z -= CURTAIN_COUNT * CURTAIN_SPACING;
+    }
+    c.rotation.z = Math.sin(swayTime * 0.8 + c.position.z) * 0.02;
   });
 }
 
-export { makeMountKailash, makeRoadsideShrine, SHRINE_COUNT, DECO_PILLAR_COUNT };
+export {
+  makeMountKailash,
+  makeSkyDome,
+  makeTemplePillar,
+  makeTree,
+  makeVineCurtain,
+  makeTorchBrazier,
+  PILLAR_SPACING,
+  TORCH_SPACING
+};

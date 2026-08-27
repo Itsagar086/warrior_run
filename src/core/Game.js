@@ -5,7 +5,7 @@ import { boot } from 'playlabs-boot';
 
 import { CONFIG } from '../utils/Constants.js';
 import { state } from './GameState.js';
-import { LIGHTING, BACKGROUND_COLOR } from '../environment/Lighting.js';
+import { LIGHTING, BACKGROUND_COLOR, setupLighting, updateLighting, enableShadows } from '../environment/Lighting.js';
 
 import { initFX, updateFX } from '../systems/FXSystem.js';
 import { playSound } from '../systems/AudioSystem.js';
@@ -48,6 +48,10 @@ camera.position.set(0, 3.4, 6.2);
 camera.lookAt(0, 1.2, -10);
 camera.updateProjectionMatrix();
 
+// Replace the engine's warm sunset rig with the moonlit night rig, and set
+// the fog and sky the reference art calls for.
+setupLighting(scene, renderer);
+
 // Setup FX Pool
 initFX(scene);
 // ===== END SYSTEM =====
@@ -64,6 +68,8 @@ window.__game = window.__game || {};
 window.__game.ui = Object.assign(window.__game.ui || {}, {
   updateHUD, showBanner, showPause, showSplash, showGameOver
 });
+// Renderer/scene handles for tooling (draw-call counts, scene inspection).
+Object.assign(window.__game, { renderer, scene, camera });
 
 loadBest();
 showSplash();
@@ -72,9 +78,14 @@ showSplash();
 // ===== SYSTEM id=system-world-build label="World & Entity Construction" =====
 createTrack(scene);
 createEnvironment(scene);
-createPlayer(scene, clock);
-createNaga(scene, clock);
-createObstaclePool(scene);
+const player = createPlayer(scene, clock);
+const naga = createNaga(scene, clock);
+const obstaclePool = createObstaclePool(scene);
+
+// The devotee catches the moonlight and receives shadows; hazards cast them
+enableShadows(player, { cast: true, receive: true });
+enableShadows(naga, { cast: true });
+obstaclePool.forEach(o => enableShadows(o, { cast: true }));
 initSpawnSystem(scene, clock);
 initPowerSystem(scene);
 initInput();
@@ -109,7 +120,7 @@ function updateSimulation(dt) {
   updatePlayer(dt);
 
   updateTrack(scrollDelta);
-  updateEnvironment(scrollDelta);
+  updateEnvironment(scrollDelta, dt);
   updateSpawning();
 
   updateObstacles(dt, scrollDelta);
@@ -182,8 +193,9 @@ function animate() {
     updateSimulation(dt);
   }
 
-  // Always update particle effects
+  // Always update particle effects and the torch flicker
   updateFX(dt);
+  updateLighting(dt);
 
   // Camera Follow
   camera.position.x = THREE.MathUtils.lerp(camera.position.x, state.playerX * 0.65, dt * 10.0);
