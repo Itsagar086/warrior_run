@@ -43,9 +43,12 @@ function makeMountKailash() {
   kailash.add(body);
 
   // Snow-capped summit
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(86, 113, 4), snowMat);
+  // Sized to sit a whisker proud of the rock at every height. Matching the
+  // body's profile exactly made the two surfaces coincident, and the peak's
+  // edge z-fought into a staircase.
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(89, 116, 4), snowMat);
   cap.rotation.y = Math.PI / 4;
-  cap.position.set(0, 119, 0);
+  cap.position.set(0, 118.5, 0);
   kailash.add(cap);
 
   // Soft blue-white halo of divine light. A radial falloff plane rather than a
