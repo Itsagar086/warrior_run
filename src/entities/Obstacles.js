@@ -2,6 +2,7 @@
 // the rolling boulder, the temple arch you must duck under, and the broken
 // causeway you must jump. Plus the shared recycled obstacle pool.
 import * as THREE from 'three';
+import { mergeStatic } from '../utils/MeshMerge.js';
 import { spawnFX } from '../systems/FXSystem.js';
 import { makeRadialGlowTexture } from '../environment/Lighting.js';
 import { makeInscriptionTexture } from '../environment/Track.js';
@@ -66,6 +67,7 @@ function makeFirePit() {
   offsets.forEach(([x, y, z, s], i) => {
     const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.8, 8), i === 0 ? flameCoreMat : flameMat);
     flame.position.set(x, y, z);
+    flame.userData.noMerge = true;
     flame.scale.setScalar(s);
     flame.userData.baseScale = s;
     flame.userData.phase = i * 1.7;
@@ -94,6 +96,12 @@ function makeFirePit() {
     glow.position.set(0, 0.05, 0);
     firePit.add(glow);
   }
+
+  mergeStatic(firePit);
+
+  // Where the shared warm pool should hang a light when this pit is live
+  firePit.userData.lightHeight = 0.95;
+  firePit.userData.lightBoost = 1.5;
 
   firePit.userData.role = 'obstacle';
   firePit.userData.obstacleType = 'firePit';
@@ -283,6 +291,8 @@ function makeTempleArch() {
     arch.add(leaf);
   });
 
+  mergeStatic(arch);
+
   arch.userData.role = 'obstacle';
   arch.userData.obstacleType = 'archGate';
   arch.userData.zone = 2;
@@ -365,6 +375,8 @@ function makeBrokenRoad() {
     spill.position.set(0, 0.02, side * (SLAB_D / 2 + 0.18));
     slabGroup.add(spill);
   });
+
+  mergeStatic(slabGroup);
 
   slabGroup.userData.role = 'obstacle';
   slabGroup.userData.obstacleType = 'brokenRoad';

@@ -3,7 +3,8 @@
 // torches that light the way, the night sky dome and Mount Kailash on the
 // horizon.
 import * as THREE from 'three';
-import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, createTorchLight, makeRadialGlowTexture } from './Lighting.js';
+import { mergeStatic } from '../utils/MeshMerge.js';
+import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, makeRadialGlowTexture, getFlickerTime } from './Lighting.js';
 
 // ===== ASSET id=mount-kailash-peak label="Mount Kailash Distant Peak" role=scenery =====
 function makeMountKailash() {
@@ -14,7 +15,7 @@ function makeMountKailash() {
   const kailash = new THREE.Group();
 
   const rockMat = new THREE.MeshStandardMaterial({
-    color: 0xa8b3cc,
+    color: 0xc3cde4,
     roughness: 0.95,
     metalness: 0.0,
     flatShading: true,
@@ -46,9 +47,9 @@ function makeMountKailash() {
   // Sized to sit a whisker proud of the rock at every height. Matching the
   // body's profile exactly made the two surfaces coincident, and the peak's
   // edge z-fought into a staircase.
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(89, 116, 4), snowMat);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(116, 151, 4), snowMat);
   cap.rotation.y = Math.PI / 4;
-  cap.position.set(0, 118.5, 0);
+  cap.position.set(0, 101, 0);
   kailash.add(cap);
 
   // Soft blue-white halo of divine light. A radial falloff plane rather than a
@@ -224,7 +225,6 @@ function makeTree() {
 
   const barkMat = new THREE.MeshStandardMaterial({ color: 0x33241a, roughness: 1.0 });
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x1d4a2a, roughness: 0.98 });
-  const leafDarkMat = new THREE.MeshStandardMaterial({ color: 0x143a20, roughness: 1.0 });
 
   const height = 3.4 + Math.random() * 1.8;
 
@@ -240,16 +240,15 @@ function makeTree() {
     [0.1, height + 1.35, 0.15, 1.0]
   ];
   blobs.forEach(([x, y, z, r], i) => {
-    const blob = new THREE.Mesh(
-      new THREE.SphereGeometry(r, 9, 8),
-      i % 2 === 0 ? leafMat : leafDarkMat
-    );
+    const blob = new THREE.Mesh(new THREE.SphereGeometry(r, 9, 8), leafMat);
     blob.position.set(x, y, z);
     blob.scale.set(1, 0.82, 1);
     trunkGroup.add(blob);
   });
 
   // Per-tree phase so the canopy does not sway in lockstep
+  mergeStatic(trunkGroup);
+
   tree.userData.swayPhase = Math.random() * Math.PI * 2;
   tree.userData.swayAmount = 0.018 + Math.random() * 0.022;
   tree.userData.role = 'scenery';
@@ -425,17 +424,21 @@ function makeTorchBrazier() {
 
   const flameOuter = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.5, 7), flameOuterMat);
   flameOuter.position.set(0, 0.25, 0);
+  flameOuter.userData.noMerge = true;
   flame.add(flameOuter);
 
   const flameCore = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 6), flameCoreMat);
   flameCore.position.set(0, 0.17, 0);
+  flameCore.userData.noMerge = true;
   flame.add(flameCore);
 
-  // The warm point light this torch throws onto the path
-  const light = createTorchLight();
-  light.position.set(0, 1.95, 0);
-  light.userData.flame = flame;
-  torch.add(light);
+  // No light of its own: a shared pool lights whichever flames are nearest the
+  // devotee. Nine point lights, most of them far behind the camera, was costing
+  // a full PBR evaluation per pixel each for nothing. See syncWarmLights.
+  torch.userData.flame = flame;
+  torch.userData.lightHeight = 1.95;
+
+  mergeStatic(torch);
 
   torch.userData.role = 'scenery';
   return torch;
@@ -482,14 +485,14 @@ export function createEnvironment(scene) {
   scene.add(floor);
 
   // Distant Mount Kailash
-  const kailash = makeMountKailash();
+  const kailash = mergeStatic(makeMountKailash());
   kailash.position.set(0, 0, -520);
   scene.add(kailash);
 
   // Temple pillars, both sides, every 15 units
   for (let i = 0; i < PILLAR_PAIRS; i++) {
     for (const side of [-1, 1]) {
-      const p = makeTemplePillar();
+      const p = mergeStatic(makeTemplePillar());
       p.position.set(side * PILLAR_OFFSET_X, 0, -i * PILLAR_SPACING + 10);
       p.rotation.y = side < 0 ? 0.06 : -0.06;
       scene.add(p);
@@ -527,7 +530,7 @@ export function createEnvironment(scene) {
   // Mossy pedestals along the causeway edge, clear of the running lanes
   for (let i = 0; i < PEDESTAL_PAIRS; i++) {
     for (const side of [-1, 1]) {
-      const p = makeStonePedestal();
+      const p = mergeStatic(makeStonePedestal());
       p.position.set(side * PEDESTAL_OFFSET_X, 0, -i * PEDESTAL_SPACING - 14);
       p.rotation.y = (Math.random() - 0.5) * 0.3;
       scene.add(p);
@@ -538,7 +541,7 @@ export function createEnvironment(scene) {
   // Occasional vine curtains hanging between the trees
   for (let i = 0; i < CURTAIN_COUNT; i++) {
     const side = i % 2 === 0 ? -1 : 1;
-    const c = makeVineCurtain();
+    const c = mergeStatic(makeVineCurtain());
     c.position.set(side * (TREE_OFFSET_X + 1.5), 5.2, -i * CURTAIN_SPACING - 8);
     scene.add(c);
     curtainPool.push(c);
@@ -560,10 +563,17 @@ export function updateEnvironment(scrollDelta, dt = 0) {
     }
   });
 
-  torchPool.forEach(t => {
+  // The flames breathe here now that they no longer hang off their own light
+  const flicker = getFlickerTime();
+  torchPool.forEach((t, i) => {
     t.position.z += scrollDelta;
     if (t.position.z > 14) {
       t.position.z -= TORCH_PAIRS * TORCH_SPACING;
+    }
+    const flame = t.userData.flame;
+    if (flame) {
+      const s = 1 + Math.sin(flicker * 8 + i) * 0.09;
+      flame.scale.set(s, 1 + Math.sin(flicker * 11 + i) * 0.14, s);
     }
   });
 

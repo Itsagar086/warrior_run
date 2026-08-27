@@ -32,7 +32,6 @@ const TORCH_COLOR = 0xff6600;
 const TORCH_INTENSITY = 2;
 const TORCH_DISTANCE = 8;
 
-const torches = [];
 let elapsed = 0;
 let moonLight = null;
 
@@ -110,69 +109,70 @@ export function makeRadialGlowTexture(inner, mid, outer) {
   }
 }
 
-// Lights for the sacred fire pits.
+// One small shared pool of warm lights for every flame in the scene.
 //
-// These deliberately live on the scene rather than on the pits themselves.
-// three.js bakes the number of point lights into every shader's cache key, so a
-// light that appears and disappears with a pooled obstacle forces a full
-// recompile of every material each time one spawns - which is a hard multi
-// hundred millisecond freeze mid-run. Keeping the count fixed and moving the
-// lights onto whichever pits are live keeps exactly one set of programs alive
-// for the whole session.
-const fireLights = [];
+// Two constraints shape this. First, three.js bakes the number of point lights
+// into every shader's cache key, so a light that appears with a pooled prop
+// forces a full recompile of every material - a hard freeze mid-run. Second,
+// each point light costs a full PBR evaluation per pixel, and there were nine:
+// six torches plus three fire pits, most of them far behind the camera and
+// contributing nothing visible.
+//
+// So the count is fixed and small, and each frame the pool is parked on the
+// nearest flames. Spares are dimmed to zero rather than removed, because an
+// intensity-0 light still counts to the shader and keeps the program set stable.
+const WARM_LIGHT_COUNT = 4;
+const warmLights = [];
 
-export function createFireLights(scene, count) {
-  for (let i = 0; i < count; i++) {
-    const light = new THREE.PointLight(0xff5500, 0, 9);
+export function createWarmLights(scene) {
+  for (let i = 0; i < WARM_LIGHT_COUNT; i++) {
+    const light = new THREE.PointLight(TORCH_COLOR, 0, TORCH_DISTANCE);
     light.userData.flickerPhase = Math.random() * Math.PI * 2;
-    fireLights.push(light);
+    warmLights.push(light);
     scene.add(light);
   }
-  return fireLights;
+  return warmLights;
 }
 
-// Parks each fire light on a live pit, and dims the spares to zero. Intensity 0
-// still counts as a light to the shader, so the program set never changes.
-const firePitWorld = new THREE.Vector3();
-export function syncFireLights(obstacles) {
-  let used = 0;
-  for (let i = 0; i < obstacles.length && used < fireLights.length; i++) {
-    const obs = obstacles[i];
-    if (!obs.visible || obs.userData.obstacleType !== 'firePit') continue;
-    obs.getWorldPosition(firePitWorld);
-    const light = fireLights[used++];
-    light.position.set(firePitWorld.x, firePitWorld.y + 0.95, firePitWorld.z);
-    const phase = light.userData.flickerPhase || 0;
-    light.intensity = (Math.sin(elapsed * 8 + phase) * 0.4 + 1.6) * 1.5;
+const emitterWorld = new THREE.Vector3();
+const nearby = [];
+
+// `emitters` is anything that burns: torch braziers and live fire pits. Only
+// the closest few in front of the devotee actually get a light.
+export function syncWarmLights(emitters) {
+  nearby.length = 0;
+
+  for (let i = 0; i < emitters.length; i++) {
+    const e = emitters[i];
+    if (!e.visible) continue;
+    // Behind the camera or lost in the fog: nothing it lights would be seen
+    const z = e.position.z;
+    if (z > 10 || z < -34) continue;
+    nearby.push(e);
   }
-  for (let i = used; i < fireLights.length; i++) fireLights[i].intensity = 0;
+
+  // Nearest first, measured from the devotee at z = 0
+  nearby.sort((a, b) => Math.abs(a.position.z) - Math.abs(b.position.z));
+
+  const used = Math.min(nearby.length, warmLights.length);
+  for (let i = 0; i < used; i++) {
+    const light = warmLights[i];
+    nearby[i].getWorldPosition(emitterWorld);
+    light.position.set(emitterWorld.x, emitterWorld.y + (nearby[i].userData.lightHeight || 1.95), emitterWorld.z);
+    const phase = light.userData.flickerPhase || 0;
+    light.intensity = (Math.sin(elapsed * 8 + phase) * 0.4 + 1.6) * (nearby[i].userData.lightBoost || 1);
+  }
+  for (let i = used; i < warmLights.length; i++) warmLights[i].intensity = 0;
 }
 
-// A warm point light for one path-side torch. Registered here so updateLighting
-// can flicker every torch in the scene.
-export function createTorchLight() {
-  const light = new THREE.PointLight(TORCH_COLOR, TORCH_INTENSITY, TORCH_DISTANCE);
-  // Each torch gets its own phase so the line of them does not pulse in unison
-  light.userData.flickerPhase = Math.random() * Math.PI * 2;
-  torches.push(light);
-  return light;
-}
-
-// Flickers every torch: Math.sin(time * 8) * 0.4 + 1.6, offset per torch.
+// Advances the clock the flame flicker runs on. The lights themselves are
+// positioned and lit by syncWarmLights once per frame.
 export function updateLighting(dt) {
   elapsed += dt;
-  for (let i = 0; i < torches.length; i++) {
-    const light = torches[i];
-    const phase = light.userData.flickerPhase || 0;
-    light.intensity = Math.sin(elapsed * 8 + phase) * 0.4 + 1.6;
+}
 
-    // The flame mesh, if one was parented to the light, breathes with it
-    const flame = light.userData.flame;
-    if (flame) {
-      const s = 1 + Math.sin(elapsed * 8 + phase) * 0.09;
-      flame.scale.set(s, 1 + Math.sin(elapsed * 11 + phase) * 0.14, s);
-    }
-  }
+export function getFlickerTime() {
+  return elapsed;
 }
 
 // Marks a subtree as casting and/or receiving shadows.

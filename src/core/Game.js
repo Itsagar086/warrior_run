@@ -20,7 +20,7 @@ import { createPlayer, updatePlayer, setShieldVisible, resetPlayerTrail } from '
 import { createObstaclePool } from '../entities/Obstacles.js';
 import { createNaga, triggerNagaChase, updateNaga, hideNaga } from '../entities/NagaChaser.js';
 
-import { createFireLights, syncFireLights } from '../environment/Lighting.js';
+import { createWarmLights, syncWarmLights } from '../environment/Lighting.js';
 import { createUIRoot, initHUD, initPauseOverlay, updateHUD, showBanner, showPause } from '../ui/HUD.js';
 import { initStartScreen, showSplash } from '../ui/StartScreen.js';
 import { initGameOverScreens, showGameOver } from '../ui/GameOver.js';
@@ -118,7 +118,7 @@ async function warmUpPipeline() {
 
 // ===== SYSTEM id=system-world-build label="World & Entity Construction" =====
 createTrack(scene);
-createEnvironment(scene);
+const environment = createEnvironment(scene);
 const player = createPlayer(scene, clock);
 const naga = createNaga(scene, clock);
 const obstaclePool = createObstaclePool(scene);
@@ -128,8 +128,12 @@ enableShadows(player, { cast: true, receive: true });
 enableShadows(naga, { cast: true });
 obstaclePool.forEach(o => enableShadows(o, { cast: true }));
 
-// One fire light per pooled pit, owned by the scene so the light count is fixed
-createFireLights(scene, obstaclePool.filter(o => o.userData.obstacleType === 'firePit').length);
+// A small fixed pool of warm lights. Everything that burns - the path torches
+// and any live fire pit - competes for them, and only the closest few win.
+createWarmLights(scene);
+const warmEmitters = environment.torchPool.concat(
+  obstaclePool.filter(o => o.userData.obstacleType === 'firePit')
+);
 initSpawnSystem(scene, clock);
 initPowerSystem(scene);
 initInput();
@@ -275,8 +279,8 @@ function animate() {
     steps++;
   }
 
-  // Park the fire lights on whichever pits are live this frame
-  syncFireLights(obstaclePool);
+  // Park the warm lights on whichever flames are nearest this frame
+  syncWarmLights(warmEmitters);
 
   // The chase camera is presentation, not simulation, so it eases on the real
   // frame time - that keeps it smooth on a 144Hz display where the fixed

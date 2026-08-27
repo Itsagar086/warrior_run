@@ -2,6 +2,7 @@
 // two glowing golden lane dividers and Sanskrit inscriptions cut into the
 // stone, recycled endlessly toward the player.
 import * as THREE from 'three';
+import { mergeStatic } from '../utils/MeshMerge.js';
 
 // ===== ASSET id=snake-way-ground label="Temple Stone Path" role=ground =====
 function makeGroundSegment() {
@@ -191,7 +192,7 @@ const inscriptionPool = [];
 
 export function createTrack(scene) {
   for (let i = 0; i < GROUND_SEGMENTS; i++) {
-    const g = makeGroundSegment();
+    const g = mergeStatic(makeGroundSegment());
     g.position.set(0, 0, -i * SEGMENT_DEPTH + 12);
     scene.add(g);
     groundPool.push(g);
