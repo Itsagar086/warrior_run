@@ -10,10 +10,14 @@ export const CONFIG = {
   // steep enough to actually reach MAX_SPEED before Kailash.
   SPEED_RAMP: 0.13,
   GRAVITY: -34.0,
-  JUMP_IMPULSE: 12.4,
+  // Tuned so the devotee actually rises 2.5 units in ~0.4s. The analytic value
+  // for that is 13.04, but the loop integrates with symplectic Euler, which
+  // undershoots the true apex by v0*dt/2 (~0.11 at 60fps) - so 13.32 is what
+  // puts the observed peak at 2.5.
+  JUMP_IMPULSE: 13.3248,
   DOUBLE_JUMP_IMPULSE: 10.8,
   LANE_SWITCH_SPEED: 15.0,
-  SLIDE_DURATION: 0.65,
+  SLIDE_DURATION: 0.6,
   KAILASH_DISTANCE: 2000,
   NAGA_CHASE_INTERVAL: 280,
   NAGA_CHASE_REQ_OBSTACLES: 3,

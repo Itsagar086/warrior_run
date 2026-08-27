@@ -1,362 +1,251 @@
-// The devotee warrior: mesh, running/jump/slide poses, lane switching and
-// the airborne kinematics that carry him over the Snake Way.
+// The devotee warrior: a fully human figure built from primitives, rigged so
+// every joint pivots where a real one would, plus the running, jumping and
+// sliding animation and the dust his feet kick up.
 import * as THREE from 'three';
 import { CONFIG } from '../utils/Constants.js';
 import { state } from '../core/GameState.js';
 import { playSound } from '../systems/AudioSystem.js';
 import { spawnFX } from '../systems/FXSystem.js';
-import { swing, swingOpposed, swingForward, swingBack, bounce } from '../utils/AnimationHelper.js';
+import { swing, swingForward } from '../utils/AnimationHelper.js';
+
+const SKIN = 0x8b5e3c;
+const HAIR = 0x2c1810;
+const TILAK = 0xff2200;
+const DHOTI = 0xff6600;
+const FOOT = 0x6b4423;
+const THREAD = 0xffffff;
+
+// Joint heights, measured up from the soles so the figure stands on y = 0
+const FOOT_H = 0.08;
+const LOWER_LEG_H = 0.35;
+const UPPER_LEG_H = 0.38;
+const HIP_Y = FOOT_H + LOWER_LEG_H + UPPER_LEG_H; // 0.81
+const TORSO_H = 0.65;
+const SHOULDER_Y = HIP_Y + TORSO_H - 0.06;
+const UPPER_ARM_H = 0.35;
+const HEAD_Y = HIP_Y + TORSO_H + 0.26;
+
+const DUST_COUNT = 8;
+
+// Moves a geometry so a limb rotates about its joint rather than its middle.
+// Guarded because the headless test harness stubs geometry out.
+function shiftGeometry(geo, x, y, z) {
+  if (typeof geo.translate === 'function') geo.translate(x, y, z);
+  return geo;
+}
+
+// Widens the top of a box and narrows its base, for a V-tapered torso. Applied
+// before shiftGeometry, while the geometry is still centred on its own origin.
+function taperGeometry(geo, topScale, bottomScale) {
+  const pos = geo.attributes && geo.attributes.position;
+  if (!pos || typeof pos.getY !== 'function') return geo;
+  for (let i = 0; i < pos.count; i++) {
+    const s = pos.getY(i) > 0 ? topScale : bottomScale;
+    pos.setX(i, pos.getX(i) * s);
+    pos.setZ(i, pos.getZ(i) * s);
+  }
+  pos.needsUpdate = true;
+  if (typeof geo.computeVertexNormals === 'function') geo.computeVertexNormals();
+  return geo;
+}
 
 // ===== ASSET id=devotee-warrior label="Devotee Warrior" role=player =====
 function makePlayer() {
-  // ART DIRECTION: silhouette = athletic Hindu yogic warrior sprinting in flowing saffron dhoti; signature = sacred janeu thread across bare torso, white tripundra tilak stripes on back and shoulders, rudraksha mala and wrist/ankle beads, shikha topknot; proportion = heroic V-taper muscular back with topknot bun; colors = warm tan skin #c47948, radiant saffron #f59e0b, deep orange sash #c2410c, sacred white #ffffff, rudraksha brown #5c2b0c.
-  const player = new THREE.Group();
+  // ART DIRECTION: silhouette = a lean human Hindu warrior mid-stride, bare
+  // chested above a saffron dhoti; signature = topknot bun, red tilak, the
+  // white sacred janeu thread crossing the torso; proportion = ~2.1 units tall,
+  // built as a real skeleton so the run reads as biomechanics not clockwork;
+  // colors = warm brown skin #8b5e3c, saffron #ff6600, dark hair #2c1810.
+  const playerGroup = new THREE.Group();
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: '#c47948', roughness: 0.6, metalness: 0.05 });
-  const dhotiMat = new THREE.MeshStandardMaterial({ color: '#f59e0b', roughness: 0.75, metalness: 0.0 });
-  const dhotiShadowMat = new THREE.MeshStandardMaterial({ color: '#d97706', roughness: 0.8, metalness: 0.0 });
-  const sashMat = new THREE.MeshStandardMaterial({ color: '#c2410c', roughness: 0.7, metalness: 0.0 });
-  const hairMat = new THREE.MeshStandardMaterial({ color: '#1a1721', roughness: 0.9, metalness: 0.1 });
-  const whiteMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.3, emissive: '#ffffff', emissiveIntensity: 0.25 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: '#e5b035', roughness: 0.3, metalness: 0.85 });
-  const rudrakshaMat = new THREE.MeshStandardMaterial({ color: '#5c2b0c', roughness: 0.85, metalness: 0.05 });
-  const sandalMat = new THREE.MeshStandardMaterial({ color: '#452b1b', roughness: 0.9 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.72, metalness: 0.02 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.9 });
+  const tilakMat = new THREE.MeshStandardMaterial({ color: TILAK, emissive: TILAK, emissiveIntensity: 0.4, roughness: 0.5 });
+  const dhotiMat = new THREE.MeshStandardMaterial({ color: DHOTI, roughness: 0.8, metalness: 0.0 });
+  const footMat = new THREE.MeshStandardMaterial({ color: FOOT, roughness: 0.85 });
+  const threadMat = new THREE.MeshStandardMaterial({ color: THREAD, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.18 });
 
-  // Torso & Pelvis root group
-  const torso = new THREE.Group();
+  /* ---------------------------------------------------------------- torso */
+  // Pivots at the waist so the run's lean rocks from the hips
+  const torsoGeo = shiftGeometry(
+    taperGeometry(new THREE.BoxGeometry(0.55, TORSO_H, 0.28), 1.1, 0.86),
+    0, TORSO_H / 2, 0
+  );
+  const torso = new THREE.Mesh(torsoGeo, skinMat);
   torso.name = 'torso';
-  torso.position.set(0, 0.96, 0);
-  player.add(torso);
+  torso.position.set(0, HIP_Y, 0);
+  torso.castShadow = true;
+  playerGroup.add(torso);
 
-  // Muscular V-taper torso
-  const chestGeo = new THREE.BoxGeometry(0.48, 0.40, 0.28);
-  const chestMesh = new THREE.Mesh(chestGeo, skinMat);
-  chestMesh.position.set(0, 0.36, 0);
-  chestMesh.castShadow = true;
-  torso.add(chestMesh);
+  // Sacred thread, worn diagonally across the chest and back
+  const janeu = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.015, 8, 20), threadMat);
+  janeu.name = 'janeu';
+  janeu.position.set(0, TORSO_H * 0.62, 0.01);
+  janeu.rotation.set(0.42, 0, 0.72);
+  janeu.scale.set(1.06, 1.06, 1.06);
+  torso.add(janeu);
 
-  // Lat / shoulder back muscles for broad athletic back
-  const backGeo = new THREE.CapsuleGeometry(0.19, 0.24, 8, 12);
-  const backMesh = new THREE.Mesh(backGeo, skinMat);
-  backMesh.rotation.z = Math.PI / 2;
-  backMesh.position.set(0, 0.42, -0.04);
-  torso.add(backMesh);
-
-  // Abdomen
-  const absGeo = new THREE.BoxGeometry(0.38, 0.24, 0.24);
-  const absMesh = new THREE.Mesh(absGeo, skinMat);
-  absMesh.position.set(0, 0.14, 0);
-  torso.add(absMesh);
-
-  // Tripundra tilak on upper back (three horizontal white stripes)
-  for (let i = -1; i <= 1; i++) {
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.016, 0.02), whiteMat);
-  stripe.position.set(0, 0.44 + i * 0.035, -0.145);
-  torso.add(stripe);
-  }
-
-  // Sacred Thread (Janeu) draping across left shoulder to right hip
-  const threadCurve = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(-0.22, 0.54, -0.06),
-  new THREE.Vector3(-0.16, 0.46, 0.14),
-  new THREE.Vector3(0.0, 0.28, 0.14),
-  new THREE.Vector3(0.18, 0.08, 0.08),
-  new THREE.Vector3(0.16, 0.08, -0.12),
-  new THREE.Vector3(-0.12, 0.35, -0.14),
-  new THREE.Vector3(-0.22, 0.54, -0.06)
-  ]);
-  const janeuMesh = new THREE.Mesh(new THREE.TubeGeometry(threadCurve, 24, 0.009, 6, true), whiteMat);
-  torso.add(janeuMesh);
-
-  // Rudraksha necklace around neck
-  const necklace = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 8, 20), rudrakshaMat);
-  necklace.rotation.x = Math.PI / 2 - 0.22;
-  necklace.position.set(0, 0.54, 0.02);
-  torso.add(necklace);
-
-  // Saffron waist wrap / Kamarbandh sash around hips
-  const sashBand = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.22, 16), sashMat);
-  sashBand.position.set(0, 0.02, 0);
-  torso.add(sashBand);
-
-  // Flowing sash tail hanging at right hip
-  const sashTail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.36, 0.06), sashMat);
-  sashTail.position.set(0.23, -0.12, 0.06);
-  sashTail.rotation.z = -0.28;
-  sashTail.rotation.y = 0.2;
-  torso.add(sashTail);
-
-  // HEAD GROUP
-  const head = new THREE.Group();
+  /* ----------------------------------------------------------------- head */
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 18, 16), skinMat);
   head.name = 'head';
-  head.position.set(0, 0.58, 0.02);
+  head.position.set(0, HEAD_Y - HIP_Y, 0.01);
+  head.castShadow = true;
   torso.add(head);
 
-  // Neck
-  const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.095, 0.12, 12), skinMat);
-  neckMesh.position.set(0, 0.02, 0);
-  head.add(neckMesh);
+  const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), hairMat);
+  hairBun.name = 'hairBun';
+  hairBun.position.set(0, 0.26, -0.06);
+  head.add(hairBun);
 
-  // Cranium / Face sphere
-  const faceMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), skinMat);
-  faceMesh.position.set(0, 0.18, 0.02);
-  faceMesh.scale.set(0.95, 1.15, 1.0);
-  head.add(faceMesh);
-
-  // Yogic hair volume & topknot
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.145, 14, 14), hairMat);
-  hairCap.position.set(0, 0.21, -0.02);
-  hairCap.scale.set(0.96, 1.1, 1.02);
+  // Hair shell so the bun does not float off a bald head
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.283, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+  hairCap.name = 'hairCap';
+  hairCap.position.set(0, 0.01, -0.02);
   head.add(hairCap);
 
-  // Topknot bun (Shikha / Jata)
-  const bunMesh = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 12), hairMat);
-  bunMesh.position.set(0, 0.36, -0.04);
-  head.add(bunMesh);
+  const tilak = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 10), tilakMat);
+  tilak.name = 'tilak';
+  tilak.position.set(0, 0.07, 0.27);
+  tilak.rotation.x = Math.PI / 2;
+  head.add(tilak);
 
-  // Gold ring around topknot
-  const bunRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 8, 16), goldMat);
-  bunRing.position.set(0, 0.32, -0.04);
-  bunRing.rotation.x = Math.PI / 2;
-  head.add(bunRing);
+  /* ---------------------------------------------------------------- dhoti */
+  const dhoti = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.55, 0.26), dhotiMat);
+  dhoti.name = 'dhoti';
+  dhoti.position.set(0, HIP_Y - 0.16, 0);
+  dhoti.castShadow = true;
+  playerGroup.add(dhoti);
 
-  // Trimmed yogic beard / jawline
-  const beard = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.14), hairMat);
-  beard.position.set(0, 0.12, 0.05);
-  head.add(beard);
+  /* ----------------------------------------------------------------- arms */
+  function buildArm(side) {
+    const sign = side === 'left' ? -1 : 1;
 
-  // White Tripundra on forehead with central red bindu dot
-  for (let i = -1; i <= 1; i++) {
-  const fStripe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.012, 0.01), whiteMat);
-  fStripe.position.set(0, 0.23 + i * 0.022, 0.14);
-  head.add(fStripe);
-  }
-  const binduDot = new THREE.Mesh(
-  new THREE.SphereGeometry(0.014, 8, 8),
-  new THREE.MeshBasicMaterial({ color: '#ff1100' })
-  );
-  binduDot.position.set(0, 0.23, 0.146);
-  head.add(binduDot);
+    const upperGeo = shiftGeometry(new THREE.CylinderGeometry(0.1, 0.09, UPPER_ARM_H, 10), 0, -UPPER_ARM_H / 2, 0);
+    const upperArm = new THREE.Mesh(upperGeo, skinMat);
+    upperArm.name = side + 'UpperArm';
+    upperArm.position.set(sign * 0.34, SHOULDER_Y - HIP_Y, 0);
+    upperArm.castShadow = true;
+    torso.add(upperArm);
 
-  // Eyes
-  const eyeMat = new THREE.MeshBasicMaterial({ color: '#110f18' });
-  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), eyeMat);
-  eyeL.position.set(-0.05, 0.18, 0.138);
-  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), eyeMat);
-  eyeR.position.set(0.05, 0.18, 0.138);
-  head.add(eyeL);
-  head.add(eyeR);
+    const lowerGeo = shiftGeometry(new THREE.CylinderGeometry(0.09, 0.08, 0.32, 10), 0, -0.16, 0);
+    const lowerArm = new THREE.Mesh(lowerGeo, skinMat);
+    lowerArm.name = side + 'LowerArm';
+    lowerArm.position.set(0, -UPPER_ARM_H, 0);
+    lowerArm.castShadow = true;
+    upperArm.add(lowerArm);
 
-  // LEFT ARM RIG
-  const armL = new THREE.Group();
-  armL.name = 'armL';
-  armL.position.set(-0.28, 0.44, 0);
-  torso.add(armL);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), skinMat);
+    hand.name = side + 'Hand';
+    hand.position.set(0, -0.34, 0.01);
+    lowerArm.add(hand);
 
-  const bicepL = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.20, 8, 12), skinMat);
-  bicepL.position.set(0, -0.10, 0);
-  armL.add(bicepL);
-
-  // White tilak stripes on outer deltoid
-  for (let i = -1; i <= 1; i++) {
-  const armMarkL = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.01, 0.08), whiteMat);
-  armMarkL.position.set(-0.07, -0.06 + i * 0.018, 0);
-  armL.add(armMarkL);
+    return { upperArm, lowerArm };
   }
 
-  const forearmL = new THREE.Group();
-  forearmL.name = 'forearmL';
-  forearmL.position.set(0, -0.20, 0);
-  armL.add(forearmL);
+  const leftArm = buildArm('left');
+  const rightArm = buildArm('right');
 
-  const armMeshL = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.19, 8, 12), skinMat);
-  armMeshL.position.set(0, -0.095, 0);
-  forearmL.add(armMeshL);
+  /* ----------------------------------------------------------------- legs */
+  function buildLeg(side) {
+    const sign = side === 'left' ? -1 : 1;
 
-  // Rudraksha bracelet on wrist
-  const wristBeadsL = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.018, 6, 12), rudrakshaMat);
-  wristBeadsL.rotation.x = Math.PI / 2;
-  wristBeadsL.position.set(0, -0.18, 0);
-  forearmL.add(wristBeadsL);
+    const upperGeo = shiftGeometry(new THREE.CylinderGeometry(0.12, 0.11, UPPER_LEG_H, 10), 0, -UPPER_LEG_H / 2, 0);
+    const upperLeg = new THREE.Mesh(upperGeo, skinMat);
+    upperLeg.name = side + 'UpperLeg';
+    upperLeg.position.set(sign * 0.14, HIP_Y, 0);
+    upperLeg.castShadow = true;
+    playerGroup.add(upperLeg);
 
-  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 8), skinMat);
-  handL.position.set(0, -0.23, 0.02);
-  forearmL.add(handL);
+    const lowerGeo = shiftGeometry(new THREE.CylinderGeometry(0.1, 0.09, LOWER_LEG_H, 10), 0, -LOWER_LEG_H / 2, 0);
+    const lowerLeg = new THREE.Mesh(lowerGeo, skinMat);
+    lowerLeg.name = side + 'LowerLeg';
+    lowerLeg.position.set(0, -UPPER_LEG_H, 0);
+    lowerLeg.castShadow = true;
+    upperLeg.add(lowerLeg);
 
-  // RIGHT ARM RIG
-  const armR = new THREE.Group();
-  armR.name = 'armR';
-  armR.position.set(0.28, 0.44, 0);
-  torso.add(armR);
+    const footGeo = shiftGeometry(new THREE.BoxGeometry(0.14, FOOT_H, 0.22), 0, -FOOT_H / 2, 0.05);
+    const foot = new THREE.Mesh(footGeo, footMat);
+    foot.name = side + 'Foot';
+    foot.position.set(0, -LOWER_LEG_H, 0);
+    foot.castShadow = true;
+    lowerLeg.add(foot);
 
-  const bicepR = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.20, 8, 12), skinMat);
-  bicepR.position.set(0, -0.10, 0);
-  armR.add(bicepR);
-
-  for (let i = -1; i <= 1; i++) {
-  const armMarkR = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.01, 0.08), whiteMat);
-  armMarkR.position.set(0.07, -0.06 + i * 0.018, 0);
-  armR.add(armMarkR);
+    return { upperLeg, lowerLeg, foot };
   }
 
-  const forearmR = new THREE.Group();
-  forearmR.name = 'forearmR';
-  forearmR.position.set(0, -0.20, 0);
-  armR.add(forearmR);
+  const leftLeg = buildLeg('left');
+  const rightLeg = buildLeg('right');
 
-  const armMeshR = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.19, 8, 12), skinMat);
-  armMeshR.position.set(0, -0.095, 0);
-  forearmR.add(armMeshR);
+  /* ------------------------------------------------------- foot dust puff */
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPositions = new Float32Array(DUST_COUNT * 3);
+  for (let i = 0; i < DUST_COUNT; i++) dustPositions[i * 3 + 1] = -99; // parked out of sight
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
 
-  const wristBeadsR = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.018, 6, 12), rudrakshaMat);
-  wristBeadsR.rotation.x = Math.PI / 2;
-  wristBeadsR.position.set(0, -0.18, 0);
-  forearmR.add(wristBeadsR);
+  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+    color: 0xd9c3a5,
+    size: 0.11,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false
+  }));
+  dust.name = 'footDust';
+  dust.frustumCulled = false;
+  playerGroup.add(dust);
 
-  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.052, 8, 8), skinMat);
-  handR.position.set(0, -0.23, 0.02);
-  forearmR.add(handR);
-
-  // LEFT LEG RIG
-  const legL = new THREE.Group();
-  legL.name = 'legL';
-  legL.position.set(-0.14, 0.88, 0);
-  player.add(legL);
-
-  // Saffron Dhoti thigh drape
-  const dhotiThighL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.38, 12), dhotiMat);
-  dhotiThighL.position.set(0, -0.18, 0);
-  legL.add(dhotiThighL);
-
-  const thighFoldL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.34, 0.16), dhotiShadowMat);
-  thighFoldL.position.set(-0.04, -0.18, 0);
-  legL.add(thighFoldL);
-
-  const shinL = new THREE.Group();
-  shinL.name = 'shinL';
-  shinL.position.set(0, -0.34, 0);
-  legL.add(shinL);
-
-  // Calf muscle definition
-  const calfMeshL = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.28, 8, 12), skinMat);
-  calfMeshL.position.set(0, -0.16, -0.01);
-  shinL.add(calfMeshL);
-
-  // Dhoti gathered cuff fold below knee
-  const dhotiCuffL = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 6, 12), dhotiMat);
-  dhotiCuffL.rotation.x = Math.PI / 2;
-  dhotiCuffL.position.set(0, -0.03, 0);
-  shinL.add(dhotiCuffL);
-
-  // Rudraksha ankle band
-  const ankleBeadsL = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.014, 6, 12), rudrakshaMat);
-  ankleBeadsL.rotation.x = Math.PI / 2;
-  ankleBeadsL.position.set(0, -0.32, 0);
-  shinL.add(ankleBeadsL);
-
-  const footL = new THREE.Group();
-  footL.name = 'footL';
-  footL.position.set(0, -0.38, 0);
-  shinL.add(footL);
-
-  const footMeshL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.06, 0.22), skinMat);
-  footMeshL.position.set(0, -0.03, 0.05);
-  footL.add(footMeshL);
-  const sandalL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.24), sandalMat);
-  sandalL.position.set(0, -0.065, 0.05);
-  footL.add(sandalL);
-
-  // RIGHT LEG RIG
-  const legR = new THREE.Group();
-  legR.name = 'legR';
-  legR.position.set(0.14, 0.88, 0);
-  player.add(legR);
-
-  const dhotiThighR = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.38, 12), dhotiMat);
-  dhotiThighR.position.set(0, -0.18, 0);
-  legR.add(dhotiThighR);
-
-  const thighFoldR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.34, 0.16), dhotiShadowMat);
-  thighFoldR.position.set(0.04, -0.18, 0);
-  legR.add(thighFoldR);
-
-  const shinR = new THREE.Group();
-  shinR.name = 'shinR';
-  shinR.position.set(0, -0.34, 0);
-  legR.add(shinR);
-
-  const calfMeshR = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.28, 8, 12), skinMat);
-  calfMeshR.position.set(0, -0.16, -0.01);
-  shinR.add(calfMeshR);
-
-  const dhotiCuffR = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 6, 12), dhotiMat);
-  dhotiCuffR.rotation.x = Math.PI / 2;
-  dhotiCuffR.position.set(0, -0.03, 0);
-  shinR.add(dhotiCuffR);
-
-  const ankleBeadsR = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.014, 6, 12), rudrakshaMat);
-  ankleBeadsR.rotation.x = Math.PI / 2;
-  ankleBeadsR.position.set(0, -0.32, 0);
-  shinR.add(ankleBeadsR);
-
-  const footR = new THREE.Group();
-  footR.name = 'footR';
-  footR.position.set(0, -0.38, 0);
-  shinR.add(footR);
-
-  const footMeshR = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.06, 0.22), skinMat);
-  footMeshR.position.set(0, -0.03, 0.05);
-  footR.add(footMeshR);
-  const sandalR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, 0.24), sandalMat);
-  sandalR.position.set(0, -0.065, 0.05);
-  footR.add(sandalR);
-
-  // Metadata & Anchors
-  player.userData.role = 'player';
-  player.userData.bbox = { w: 0.9, h: 2.0, d: 0.6 };
-  player.userData.anchors = {
-  feet: [0, 0, 0],
-  belowFeet: [0, -0.1, 0],
-  hip: [0, 0.96, 0],
-  chest: [0, 1.36, 0.15],
-  back: [0, 1.36, -0.16],
-  leftHand: [-0.36, 0.96, 0.1],
-  rightHand: [0.36, 0.96, 0.1],
-  head: [0, 1.66, 0.02],
-  topOfHead: [0, 1.98, -0.02]
+  /* ------------------------------------------------------------- metadata */
+  playerGroup.userData.role = 'player';
+  playerGroup.userData.bbox = { w: 0.9, h: 2.1, d: 0.6 };
+  playerGroup.userData.anchors = {
+    feet: { x: 0, y: 0, z: 0 },
+    belowFeet: { x: 0, y: -0.1, z: 0 },
+    hip: { x: 0, y: HIP_Y, z: 0 },
+    chest: { x: 0, y: HIP_Y + TORSO_H * 0.7, z: 0.15 },
+    back: { x: 0, y: HIP_Y + TORSO_H * 0.7, z: -0.16 },
+    leftHand: { x: -0.34, y: SHOULDER_Y - 0.7, z: 0 },
+    rightHand: { x: 0.34, y: SHOULDER_Y - 0.7, z: 0 },
+    head: { x: 0, y: HEAD_Y, z: 0 },
+    topOfHead: { x: 0, y: HEAD_Y + 0.4, z: 0 }
   };
 
-  return ((__o) => { __o.userData = __o.userData || {}; __o.userData.anchors = Object.assign(__o.userData.anchors || {}, { "feet": { x: 0, y: 0.085, z: 0 }, "belowFeet": { x: 0, y: -0.01, z: 0 }, "hip": { x: 0, y: 0.94, z: 0 }, "chest": { x: 0, y: 1.377, z: 0 }, "back": { x: 0, y: 1.263, z: -0.1 }, "leftHand": { x: -0.3575, y: 1.035, z: 0 }, "rightHand": { x: 0.3575, y: 1.035, z: 0 }, "head": { x: 0, y: 1.795, z: 0 }, "topOfHead": { x: 0, y: 1.985, z: 0 } }); return __o; })(((__o) => { __o.userData = __o.userData || {}; if (!__o.userData.role) __o.userData.role = "player"; return __o; })(player));
+  playerGroup.userData.parts = {
+    torso, head, hairBun, tilak, janeu, dhoti, dust,
+    leftUpperArm: leftArm.upperArm, leftLowerArm: leftArm.lowerArm,
+    rightUpperArm: rightArm.upperArm, rightLowerArm: rightArm.lowerArm,
+    leftUpperLeg: leftLeg.upperLeg, leftLowerLeg: leftLeg.lowerLeg, leftFoot: leftLeg.foot,
+    rightUpperLeg: rightLeg.upperLeg, rightLowerLeg: rightLeg.lowerLeg, rightFoot: rightLeg.foot
+  };
+
+  return playerGroup;
 }
 // ===== END ASSET =====
 
 let player = null;
-let playerLimbs = null;
+let parts = null;
 let shieldMesh = null;
 let clock = null;
 
-// Builds the devotee, caches his limb nodes and hangs Vishnu's shield on him.
+// Foot-dust particle state, parallel to the Points geometry buffer
+const dustVel = [];
+const dustLife = new Float32Array(DUST_COUNT);
+let dustCursor = 0;
+let prevStride = 0;
+
+// Builds the devotee, caches his joints and hangs Vishnu's shield on him.
 export function createPlayer(scene, gameClock) {
   clock = gameClock;
 
-  // Instantiate Player
   player = makePlayer();
   player.position.set(0, 0, 0);
   player.rotation.y = Math.PI; // Face down -Z toward Kailash
   scene.add(player);
   window.__gameEntities.player = player;
 
-  // Cache Player Limb Nodes for Running Animation
-  playerLimbs = {
-    legL: player.getObjectByName('legL'),
-    legR: player.getObjectByName('legR'),
-    shinL: player.getObjectByName('shinL'),
-    shinR: player.getObjectByName('shinR'),
-    armL: player.getObjectByName('armL'),
-    armR: player.getObjectByName('armR'),
-    torso: player.getObjectByName('torso'),
-    head: player.getObjectByName('head')
-  };
+  parts = player.userData.parts;
+  for (let i = 0; i < DUST_COUNT; i++) {
+    dustVel.push(new THREE.Vector3());
+    dustLife[i] = 0;
+  }
 
   // Vishnu Shield Visual Sphere
   const shieldAuraMat = new THREE.MeshStandardMaterial({
@@ -379,8 +268,8 @@ export function getPlayer() {
   return player;
 }
 
-export function getPlayerLimbs() {
-  return playerLimbs;
+export function getPlayerParts() {
+  return parts;
 }
 
 export function setShieldVisible(visible) {
@@ -418,6 +307,130 @@ function doSlide() {
   }
   state.isSliding = true;
   state.slideTimer = CONFIG.SLIDE_DURATION;
+}
+
+/* ------------------------------------------------------------- animation */
+
+const approach = (current, target, rate, dt) =>
+  THREE.MathUtils.lerp(current, target, Math.min(1, rate * dt));
+
+// Kicks a couple of dust particles out from under the planted foot.
+function emitDust(footX) {
+  if (!parts || !parts.dust) return;
+  const arr = parts.dust.geometry.attributes.position.array;
+
+  for (let n = 0; n < 2; n++) {
+    const i = dustCursor % DUST_COUNT;
+    dustCursor++;
+
+    arr[i * 3] = footX + (Math.random() - 0.5) * 0.1;
+    arr[i * 3 + 1] = 0.04;
+    arr[i * 3 + 2] = (Math.random() - 0.5) * 0.12;
+
+    // Puffs outward and back, the way dust trails a runner
+    dustVel[i].set(
+      (Math.random() - 0.5) * 0.9,
+      0.45 + Math.random() * 0.5,
+      -(0.5 + Math.random() * 0.7)
+    );
+    dustLife[i] = 0.45 + Math.random() * 0.25;
+  }
+}
+
+function updateDust(dt, running) {
+  if (!parts || !parts.dust) return;
+  const attr = parts.dust.geometry.attributes.position;
+  const arr = attr.array;
+  let alive = false;
+
+  for (let i = 0; i < DUST_COUNT; i++) {
+    if (dustLife[i] <= 0) continue;
+    dustLife[i] -= dt;
+    if (dustLife[i] <= 0) {
+      arr[i * 3 + 1] = -99; // park it out of sight
+      continue;
+    }
+    alive = true;
+    dustVel[i].y -= 1.6 * dt; // settles back down
+    arr[i * 3] += dustVel[i].x * dt;
+    arr[i * 3 + 1] += dustVel[i].y * dt;
+    arr[i * 3 + 2] += dustVel[i].z * dt;
+  }
+
+  attr.needsUpdate = true;
+  parts.dust.visible = alive || running;
+}
+
+// Human running gait: legs alternate, lower legs follow through, arms swing
+// opposite, torso rocks and the head bobs at twice stride rate.
+function animateRun(time, dt) {
+  const t = time * 10;
+
+  parts.leftUpperLeg.rotation.x = swing(t, 0.7);
+  parts.rightUpperLeg.rotation.x = swing(t + Math.PI, 0.7);
+
+  parts.leftLowerLeg.rotation.x = swingForward(t + 0.5, 0.6);
+  parts.rightLowerLeg.rotation.x = swingForward(t + Math.PI + 0.5, 0.6);
+
+  parts.leftUpperArm.rotation.x = swing(t + Math.PI, 0.5);
+  parts.rightUpperArm.rotation.x = swing(t, 0.5);
+
+  // Elbows carried bent, opening slightly on the backswing
+  parts.leftLowerArm.rotation.x = -0.5 - swingForward(t + Math.PI, 0.35);
+  parts.rightLowerArm.rotation.x = -0.5 - swingForward(t, 0.35);
+
+  // Ankles roll through the stride
+  parts.leftFoot.rotation.x = swing(t + 0.9, 0.25);
+  parts.rightFoot.rotation.x = swing(t + Math.PI + 0.9, 0.25);
+
+  parts.torso.rotation.z = swing(t, 0.03);
+  parts.torso.rotation.x = 0.1;
+
+  // Head bob, twice per stride. Set from the base height rather than
+  // accumulated, so it oscillates instead of drifting upward.
+  parts.head.position.y = (HEAD_Y - HIP_Y) + swing(time * 20, 0.008);
+
+  // Each zero crossing is one foot planting: puff dust under that foot
+  const stride = Math.sin(t);
+  if (prevStride <= 0 && stride > 0) emitDust(0.14);
+  else if (prevStride >= 0 && stride < 0) emitDust(-0.14);
+  prevStride = stride;
+}
+
+// Airborne: arms up, knees tucked, eased in so it does not snap.
+function animateJump(dt) {
+  const rate = 12;
+  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, -0.8, rate, dt);
+  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.8, rate, dt);
+  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.5, rate, dt);
+  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.5, rate, dt);
+
+  parts.leftUpperLeg.rotation.x = approach(parts.leftUpperLeg.rotation.x, 0.6, rate, dt);
+  parts.rightUpperLeg.rotation.x = approach(parts.rightUpperLeg.rotation.x, 0.6, rate, dt);
+  parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 0.9, rate, dt);
+  parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 0.9, rate, dt);
+
+  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.05, rate, dt);
+  parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
+  parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
+}
+
+// Sliding: legs thrown forward, torso back, the group squashed by updatePlayer.
+function animateSlide(dt) {
+  const rate = 14;
+  parts.leftUpperLeg.rotation.x = approach(parts.leftUpperLeg.rotation.x, -1.15, rate, dt);
+  parts.rightUpperLeg.rotation.x = approach(parts.rightUpperLeg.rotation.x, -1.05, rate, dt);
+  parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 0.2, rate, dt);
+  parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 0.25, rate, dt);
+
+  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, 0.9, rate, dt);
+  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.4, rate, dt);
+  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.3, rate, dt);
+  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.3, rate, dt);
+
+  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.6, rate, dt);
+  parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
+  parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
 
 function updatePlayer(dt) {
@@ -471,54 +484,26 @@ function updatePlayer(dt) {
     }
   }
 
-  // Position Root
-  player.position.y = state.playerY + (state.isSliding ? -0.45 : 0);
+  // Position Root. Sliding squashes the whole figure to half height and drops
+  // it half a unit, easing back over the slide's tail.
+  const targetSquash = state.isSliding ? 0.5 : 1.0;
+  player.scale.y = approach(player.scale.y, targetSquash, 14, dt);
+  player.position.y = state.playerY;
+
+  // Keep the shield a sphere while the body squashes underneath it
+  if (shieldMesh && player.scale.y > 0.01) shieldMesh.scale.y = 1 / player.scale.y;
 
   // Animate Rig Limbs
-  if (playerLimbs.legL && playerLimbs.legR && playerLimbs.armL && playerLimbs.armR) {
+  if (parts) {
     if (state.isSliding) {
-      // Slide pose
-      playerLimbs.legL.rotation.x = -1.4;
-      playerLimbs.legR.rotation.x = -1.3;
-      if (playerLimbs.shinL) playerLimbs.shinL.rotation.x = 0.2;
-      if (playerLimbs.shinR) playerLimbs.shinR.rotation.x = 0.2;
-      playerLimbs.armL.rotation.x = 0.8;
-      playerLimbs.armR.rotation.x = -0.5;
-      if (playerLimbs.torso) {
-        playerLimbs.torso.rotation.x = -0.7;
-        playerLimbs.torso.position.y = 0.55;
-      }
+      animateSlide(dt);
     } else if (!state.isGrounded) {
-      // Air Jump pose
-      playerLimbs.legL.rotation.x = -0.5;
-      playerLimbs.legR.rotation.x = 0.4;
-      if (playerLimbs.shinL) playerLimbs.shinL.rotation.x = 0.9;
-      if (playerLimbs.shinR) playerLimbs.shinR.rotation.x = 0.4;
-      playerLimbs.armL.rotation.x = -1.2;
-      playerLimbs.armR.rotation.x = -1.2;
-      if (playerLimbs.torso) {
-        playerLimbs.torso.rotation.x = -0.1;
-        playerLimbs.torso.position.y = 0.96;
-      }
+      animateJump(dt);
     } else {
-      // Athletic Hindu runner stride gait
-      const strideFreq = 13.0 + (state.speed - 16.0) * 0.45;
-      const t = clock.getElapsedTime() * strideFreq;
-      playerLimbs.legL.rotation.x = swing(t, 0.75);
-      playerLimbs.legR.rotation.x = swingOpposed(t, 0.75);
-
-      if (playerLimbs.shinL) playerLimbs.shinL.rotation.x = swingBack(t, 0.85);
-      if (playerLimbs.shinR) playerLimbs.shinR.rotation.x = swingForward(t, 0.85);
-
-      playerLimbs.armL.rotation.x = swingOpposed(t, 0.75);
-      playerLimbs.armR.rotation.x = swing(t, 0.75);
-
-      if (playerLimbs.torso) {
-        playerLimbs.torso.position.y = 0.96 + bounce(t * 2, 0.06);
-        playerLimbs.torso.rotation.x = 0.14 + (state.speed / 60) * 0.1;
-        playerLimbs.torso.rotation.z = swingOpposed(t, 0.05);
-      }
+      animateRun(clock.getElapsedTime(), dt);
     }
+
+    updateDust(dt, state.isGrounded && !state.isSliding);
   }
 
   // Vishnu Shield visual spin & timer
