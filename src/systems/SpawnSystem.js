@@ -183,7 +183,7 @@ export function updateSpawning() {
   // Spawn Obstacles & Pickups based on distance traveled
   if (state.distance >= nextObstacleDist) {
     spawnObstacleAt(CONFIG.SPAWN_Z);
-    nextObstacleDist = state.distance + (18.0 - (state.speed - 16.0) * 0.35);
+    nextObstacleDist = state.distance + (18.0 - (state.speed - CONFIG.BASE_SPEED) * 0.35);
   }
   if (state.distance >= nextCollectibleDist) {
     spawnCollectibleAt(CONFIG.SPAWN_Z - 2);

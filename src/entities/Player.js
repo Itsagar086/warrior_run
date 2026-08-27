@@ -7,6 +7,7 @@ import { state } from '../core/GameState.js';
 import { playSound } from '../systems/AudioSystem.js';
 import { spawnFX } from '../systems/FXSystem.js';
 import { swing, swingForward } from '../utils/AnimationHelper.js';
+import { shakeCamera } from '../core/CameraRig.js';
 
 const SKIN = 0x8b5e3c;
 const HAIR = 0x2c1810;
@@ -26,6 +27,17 @@ const UPPER_ARM_H = 0.35;
 const HEAD_Y = HIP_Y + TORSO_H + 0.26;
 
 const DUST_COUNT = 8;
+
+// Motion trail: a few simplified silhouettes at where the devotee was a moment
+// ago. Full clones of the rig would be three times his mesh count in
+// transparent geometry, which is a lot of overdraw for a smear.
+const TRAIL_GHOSTS = 3;
+const TRAIL_SAMPLE_GAP = 4;                        // frames between ghosts
+const TRAIL_HISTORY = TRAIL_GHOSTS * TRAIL_SAMPLE_GAP + 2;
+const TRAIL_OPACITY = [0.15, 0.09, 0.045];
+// The trail only shows when he is actually moving across or up the lane, so a
+// straight run does not just look like a thicker player.
+const TRAIL_FULL_AT = 0.85;
 
 // Moves a geometry so a limb rotates about its joint rather than its middle.
 // Guarded because the headless test harness stubs geometry out.
@@ -208,6 +220,9 @@ function makePlayer() {
     topOfHead: { x: 0, y: HEAD_Y + 0.4, z: 0 }
   };
 
+  // Pulsed when he takes a hit, instead of strobing his visibility on and off
+  playerGroup.userData.bodyMaterials = [skinMat, dhotiMat, hairMat, footMat];
+
   playerGroup.userData.parts = {
     torso, head, hairBun, tilak, janeu, dhoti, dust,
     leftUpperArm: leftArm.upperArm, leftLowerArm: leftArm.lowerArm,
@@ -230,6 +245,11 @@ const dustVel = [];
 const dustLife = new Float32Array(DUST_COUNT);
 let dustCursor = 0;
 let prevStride = 0;
+
+const trailGhosts = [];
+const trailHistory = [];
+let trailCursor = 0;
+let hitFlash = 0;
 
 // Builds the devotee, caches his joints and hangs Vishnu's shield on him.
 export function createPlayer(scene, gameClock) {
@@ -261,7 +281,49 @@ export function createPlayer(scene, gameClock) {
   shieldMesh.visible = false;
   player.add(shieldMesh);
 
+  buildTrail(scene);
+
   return player;
+}
+
+// Three fading silhouettes, parented to the scene rather than the player so
+// they keep their own position while he moves.
+function buildTrail(scene) {
+  const torsoGeo = new THREE.BoxGeometry(0.55, 0.65, 0.28);
+  const headGeo = new THREE.SphereGeometry(0.26, 10, 8);
+  const legGeo = new THREE.BoxGeometry(0.2, 0.72, 0.24);
+
+  for (let i = 0; i < TRAIL_GHOSTS; i++) {
+    const ghost = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffb46a,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    const torso = new THREE.Mesh(torsoGeo, mat);
+    torso.position.y = HIP_Y + TORSO_H / 2;
+    ghost.add(torso);
+
+    const head = new THREE.Mesh(headGeo, mat);
+    head.position.y = HEAD_Y;
+    ghost.add(head);
+
+    [-0.14, 0.14].forEach(x => {
+      const leg = new THREE.Mesh(legGeo, mat);
+      leg.position.set(x, HIP_Y - 0.36, 0);
+      ghost.add(leg);
+    });
+
+    ghost.scale.setScalar(0.94 - i * 0.03);
+    ghost.name = 'playerGhost' + i;
+    ghost.visible = false;
+    ghost.userData.material = mat;
+    scene.add(ghost);
+    trailGhosts.push(ghost);
+  }
 }
 
 export function getPlayer() {
@@ -270,6 +332,70 @@ export function getPlayer() {
 
 export function getPlayerParts() {
   return parts;
+}
+
+// Drops the trail history, so a new run does not smear from where the last one
+// ended.
+export function resetPlayerTrail() {
+  trailHistory.length = 0;
+  trailCursor = 0;
+  hitFlash = 0;
+  for (let i = 0; i < trailGhosts.length; i++) {
+    trailGhosts[i].visible = false;
+    trailGhosts[i].userData.material.opacity = 0;
+  }
+}
+
+// Records where he is now and fades the ghosts in behind him. They only show
+// while he is crossing lanes or airborne - that is where the motion is.
+function updateTrail() {
+  if (!trailGhosts.length) return;
+
+  trailHistory[trailCursor % TRAIL_HISTORY] = { x: player.position.x, y: player.position.y };
+  trailCursor++;
+
+  const running = state.phase === 'playing';
+  for (let i = 0; i < trailGhosts.length; i++) {
+    const ghost = trailGhosts[i];
+    const back = (i + 1) * TRAIL_SAMPLE_GAP;
+    const sample = trailHistory[(trailCursor - 1 - back + TRAIL_HISTORY * 2) % TRAIL_HISTORY];
+
+    if (!running || !sample || trailCursor <= back) {
+      ghost.visible = false;
+      continue;
+    }
+
+    const moved = Math.hypot(sample.x - player.position.x, sample.y - player.position.y);
+    const strength = Math.min(1, moved / TRAIL_FULL_AT);
+    const opacity = TRAIL_OPACITY[i] * strength;
+
+    if (opacity < 0.005) {
+      ghost.visible = false;
+      continue;
+    }
+    ghost.visible = true;
+    ghost.position.set(sample.x, sample.y, player.position.z);
+    ghost.rotation.y = player.rotation.y;
+    ghost.scale.y = (0.94 - i * 0.03) * player.scale.y;
+    ghost.userData.material.opacity = opacity;
+  }
+}
+
+// A hit reads as a warm pulse through the body that decays with the stumble
+// window, rather than the old on/off visibility strobe.
+function updateHitFlash(dt, elapsed) {
+  const target = state.stumbleTimer > 0
+    ? Math.abs(Math.sin(elapsed * 13)) * Math.min(1, state.stumbleTimer / 0.6)
+    : 0;
+  hitFlash = THREE.MathUtils.lerp(hitFlash, target, Math.min(1, 14 * dt));
+
+  const mats = player.userData.bodyMaterials;
+  if (!mats) return;
+  for (let i = 0; i < mats.length; i++) {
+    // Emissive colour is a uniform, not a shader define, so pulsing it costs
+    // nothing and cannot trigger a recompile.
+    if (mats[i].emissive) mats[i].emissive.setRGB(hitFlash * 0.85, hitFlash * 0.12, hitFlash * 0.05);
+  }
 }
 
 export function setShieldVisible(visible) {
@@ -454,10 +580,9 @@ function updatePlayer(dt) {
   // Stumble Timer (invulnerability window after Zone 2 hit)
   if (state.stumbleTimer > 0) {
     state.stumbleTimer -= dt;
-    player.visible = Math.floor(clock.getElapsedTime() * 20) % 2 === 0;
-  } else {
-    player.visible = true;
   }
+  player.visible = true;
+  updateHitFlash(dt, clock.getElapsedTime());
 
   // Lane X Interpolation
   state.playerX = THREE.MathUtils.lerp(state.playerX, state.targetX, CONFIG.LANE_SWITCH_SPEED * dt);
@@ -469,10 +594,13 @@ function updatePlayer(dt) {
     state.playerY += state.playerVY * dt;
 
     if (state.playerY <= state.groundY) {
+      // Scale the knock with how hard he came down, so a hop is not a slam
+      const impact = Math.min(1, Math.abs(state.playerVY) / 13);
       state.playerY = state.groundY;
       state.playerVY = 0;
       state.isGrounded = true;
       state.canDoubleJump = true;
+      if (impact > 0.25) shakeCamera(impact);
     }
   }
 
@@ -492,6 +620,8 @@ function updatePlayer(dt) {
 
   // Keep the shield a sphere while the body squashes underneath it
   if (shieldMesh && player.scale.y > 0.01) shieldMesh.scale.y = 1 / player.scale.y;
+
+  updateTrail();
 
   // Animate Rig Limbs
   if (parts) {

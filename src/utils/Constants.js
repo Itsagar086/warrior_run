@@ -4,11 +4,15 @@
 export const CONFIG = {
   LANE_WIDTH: 2.2,
   LANES: [-2.2, 0, 2.2],
-  BASE_SPEED: 16.0,
-  MAX_SPEED: 28.0,
-  // Per-second acceleration. A full 2000m run lasts ~2 minutes, so this must be
-  // steep enough to actually reach MAX_SPEED before Kailash.
-  SPEED_RAMP: 0.13,
+  // The run starts at 12 u/s and gains 0.5 every 200m. Note the 22 cap is only
+  // reached at 4000m - a 2000m run to Kailash finishes at 17 u/s.
+  BASE_SPEED: 12.0,
+  MAX_SPEED: 22.0,
+  SPEED_STEP: 0.5,
+  SPEED_STEP_DISTANCE: 200,
+  // Speed eases toward its stepped target rather than jumping at each
+  // threshold, and eases up from a standstill when a run begins.
+  SPEED_EASE: 2.6,
   GRAVITY: -34.0,
   // Tuned so the devotee actually rises 2.5 units in ~0.4s. The analytic value
   // for that is 13.04, but the loop integrates with symplectic Euler, which

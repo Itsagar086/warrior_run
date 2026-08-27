@@ -9,6 +9,7 @@ import { spawnFX } from '../systems/FXSystem.js';
 import { endRun } from '../systems/ScoreSystem.js';
 import { showBanner } from '../ui/HUD.js';
 import { getPlayer } from './Player.js';
+import { shakeCamera } from '../core/CameraRig.js';
 import { swing } from '../utils/AnimationHelper.js';
 
 // ===== ASSET id=rival-naga-chaser label="Rival Naga" role=enemy =====
@@ -234,6 +235,7 @@ export function nagaStrike() {
   if (state.lives > 1) {
     state.lives--;
     state.stumbleTimer = 1.5;
+    shakeCamera(2.0);
     state.chase.survived = 0;
     state.chase.nagaZ = CONFIG.NAGA_RECOIL_Z;
     state.chase.nagaTargetZ = CONFIG.NAGA_RECOIL_Z;

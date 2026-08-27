@@ -16,7 +16,7 @@ import { initPowerSystem, updateProjectiles, resetProjectiles } from '../systems
 import { createTrack, updateTrack } from '../environment/Track.js';
 import { createEnvironment, updateEnvironment } from '../environment/Environment.js';
 
-import { createPlayer, updatePlayer, setShieldVisible } from '../entities/Player.js';
+import { createPlayer, updatePlayer, setShieldVisible, resetPlayerTrail } from '../entities/Player.js';
 import { createObstaclePool } from '../entities/Obstacles.js';
 import { createNaga, triggerNagaChase, updateNaga, hideNaga } from '../entities/NagaChaser.js';
 
@@ -25,6 +25,7 @@ import { createUIRoot, initHUD, initPauseOverlay, updateHUD, showBanner, showPau
 import { initStartScreen, showSplash } from '../ui/StartScreen.js';
 import { initGameOverScreens, showGameOver } from '../ui/GameOver.js';
 
+import { initCameraRig, updateCamera } from './CameraRig.js';
 import { initInput } from './InputHandler.js';
 import '../utils/AssetFactory.js';
 
@@ -45,9 +46,8 @@ const {
 camera.fov = 58;
 camera.near = 0.1;
 camera.far = 700;
-camera.position.set(0, 3.4, 6.2);
-camera.lookAt(0, 1.2, -10);
 camera.updateProjectionMatrix();
+initCameraRig(camera);
 
 // Replace the engine's warm sunset rig with the moonlit night rig, and set
 // the fog and sky the reference art calls for.
@@ -139,8 +139,12 @@ initInput();
 function updateSimulation(dt) {
   if (state.phase !== 'playing') return;
 
-  // Speed Ramp
-  state.speed = Math.min(CONFIG.MAX_SPEED, state.speed + CONFIG.SPEED_RAMP * dt);
+  // Speed: a step every SPEED_STEP_DISTANCE metres, eased into rather than
+  // snapped to, so neither the start of a run nor crossing a threshold reads as
+  // a jolt.
+  const gained = Math.floor(state.distance / CONFIG.SPEED_STEP_DISTANCE) * CONFIG.SPEED_STEP;
+  const targetSpeed = Math.min(CONFIG.MAX_SPEED, CONFIG.BASE_SPEED + gained);
+  state.speed = THREE.MathUtils.lerp(state.speed, targetSpeed, Math.min(1, CONFIG.SPEED_EASE * dt));
   const scrollDelta = state.speed * dt;
   state.distance += scrollDelta;
 
@@ -189,7 +193,7 @@ window.__startGame = function() {
   state.lives = 3;
   state.stumbleTimer = 0;
   state.distance = 0;
-  state.speed = CONFIG.BASE_SPEED;
+  state.speed = 0; // eases up to BASE_SPEED over the first moment of the run
   state.lane = 1;
   state.playerX = 0;
   state.targetX = 0;
@@ -216,6 +220,7 @@ window.__startGame = function() {
 
   resetSpawns();
   resetProjectiles();
+  resetPlayerTrail();
 
   playSound('om');
   showBanner('ASCENDING THE SNAKE WAY TO KAILASH!', 2.5);
@@ -276,13 +281,7 @@ function animate() {
   // The chase camera is presentation, not simulation, so it eases on the real
   // frame time - that keeps it smooth on a 144Hz display where the fixed
   // simulation step only fires every other frame.
-  const dt = frameTime;
-
-  // Camera Follow
-  camera.position.x = THREE.MathUtils.lerp(camera.position.x, state.playerX * 0.65, dt * 10.0);
-  camera.position.y = 3.4 + (state.playerY > 0 ? state.playerY * 0.35 : 0);
-  camera.position.z = 6.2;
-  camera.lookAt(state.playerX * 0.35, 1.2 + (state.playerY > 0 ? state.playerY * 0.25 : 0), -12);
+  updateCamera(frameTime);
 
   // Unconditional Render
   renderer.render(scene, camera);

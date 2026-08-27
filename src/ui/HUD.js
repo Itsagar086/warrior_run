@@ -19,6 +19,29 @@ const shown = {
   power: undefined, combo: null, lives: null
 };
 
+// Every full-screen overlay fades rather than cutting. Toggling display alone
+// snaps the screen; this drives opacity across a transition and only then
+// takes the element out of the layout.
+export const OVERLAY_FADE_MS = 320;
+
+export function fadeOverlay(el, visible, display = 'flex') {
+  if (!el) return;
+  if (el._fadeTimer) { clearTimeout(el._fadeTimer); el._fadeTimer = null; }
+
+  if (visible) {
+    el.style.display = display;
+    // A frame between display and opacity, or the browser has nothing to
+    // transition from.
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+  } else {
+    el.style.opacity = '0';
+    el._fadeTimer = setTimeout(() => {
+      el.style.display = 'none';
+      el._fadeTimer = null;
+    }, OVERLAY_FADE_MS);
+  }
+}
+
 // Creates (or returns) the single overlay root every UI piece attaches to.
 export function createUIRoot() {
   const existing = document.getElementById('snake-way-ui-root');
@@ -250,6 +273,8 @@ export function initPauseOverlay(root) {
     pointer-events: auto;
     padding: 24px;
     text-align: center;
+    opacity: 0;
+    transition: opacity ${OVERLAY_FADE_MS}ms ease;
   `;
   pauseOverlay.innerHTML = `
     <div style="max-width: 380px; background: rgba(32, 36, 63, 0.95); border: 3px solid #c9a24b; border-radius: 20px; padding: 28px 26px; box-shadow: 0 0 30px rgba(201, 162, 75, 0.5);">
@@ -349,5 +374,5 @@ export function showBanner(text, duration = 2.5) {
 }
 
 export function showPause(visible) {
-  if (pauseOverlay) pauseOverlay.style.display = visible ? 'flex' : 'none';
+  fadeOverlay(pauseOverlay, visible);
 }

@@ -1,6 +1,6 @@
 // End-of-run screens: the death card with the score breakdown and retry
 // button, and the victory card for reaching Mount Kailash.
-import { showPause } from './HUD.js';
+import { showPause, fadeOverlay, OVERLAY_FADE_MS } from './HUD.js';
 
 let gameOverOverlay = null;
 let victoryOverlay = null;
@@ -21,6 +21,8 @@ export function initGameOverScreens(root) {
     pointer-events: auto;
     padding: 24px;
     text-align: center;
+    opacity: 0;
+    transition: opacity ${OVERLAY_FADE_MS}ms ease;
   `;
   gameOverOverlay.innerHTML = `
     <div style="max-width: 480px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ff4500; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 69, 0, 0.6);">
@@ -49,7 +51,7 @@ export function initGameOverScreens(root) {
   root.appendChild(gameOverOverlay);
 
   gameOverOverlay.querySelector('#btn-restart').addEventListener('click', () => {
-    gameOverOverlay.style.display = 'none';
+    fadeOverlay(gameOverOverlay, false);
     if (window.__restartGame) window.__restartGame();
   });
 
@@ -68,6 +70,8 @@ export function initGameOverScreens(root) {
     pointer-events: auto;
     padding: 24px;
     text-align: center;
+    opacity: 0;
+    transition: opacity ${OVERLAY_FADE_MS}ms ease;
   `;
   victoryOverlay.innerHTML = `
     <div style="max-width: 520px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ffd700; border-radius: 20px; padding: 36px 30px; box-shadow: 0 0 45px rgba(77, 224, 192, 0.7);">
@@ -96,14 +100,14 @@ export function initGameOverScreens(root) {
   root.appendChild(victoryOverlay);
 
   victoryOverlay.querySelector('#btn-vic-restart').addEventListener('click', () => {
-    victoryOverlay.style.display = 'none';
+    fadeOverlay(victoryOverlay, false);
     if (window.__restartGame) window.__restartGame();
   });
 }
 
 export function hideEndScreens() {
-  if (gameOverOverlay) gameOverOverlay.style.display = 'none';
-  if (victoryOverlay) victoryOverlay.style.display = 'none';
+  fadeOverlay(gameOverOverlay, false);
+  fadeOverlay(victoryOverlay, false);
 }
 
 export function showGameOver(score, isVictory = false, best = null) {
@@ -122,14 +126,14 @@ export function showGameOver(score, isVictory = false, best = null) {
 
   if (isVictory) {
     if (victoryOverlay) {
-      victoryOverlay.style.display = 'flex';
+      fadeOverlay(victoryOverlay, true);
       const vVal = victoryOverlay.querySelector('#vic-punya-val');
       if (vVal) vVal.textContent = Math.floor(score);
       paintBest(victoryOverlay.querySelector('#vic-best-val'));
     }
   } else {
     if (gameOverOverlay) {
-      gameOverOverlay.style.display = 'flex';
+      fadeOverlay(gameOverOverlay, true);
       const gVal = gameOverOverlay.querySelector('#go-punya-val');
       if (gVal) gVal.textContent = Math.floor(score);
       const dVal = gameOverOverlay.querySelector('#go-dist-val');

@@ -11,6 +11,7 @@ import { playSound } from './AudioSystem.js';
 import { spawnFX } from './FXSystem.js';
 import { registerPathMistake } from '../entities/NagaChaser.js';
 import { endRun } from './ScoreSystem.js';
+import { shakeCamera } from '../core/CameraRig.js';
 
 export function resolveObstacleCollision(obs, oType) {
   const player = getPlayer();
@@ -81,6 +82,7 @@ export function resolveObstacleCollision(obs, oType) {
       obs.visible = false;
       playSound('blast');
       spawnFX(player.position, '#ff8c2e', 20);
+      shakeCamera(1.8);
       // Misreading the path is what actually summons the Naga
       registerPathMistake();
     } else {
@@ -88,6 +90,7 @@ export function resolveObstacleCollision(obs, oType) {
       state.lives = 0;
       playSound('blast');
       spawnFX(player.position, '#ff4500', 30);
+      shakeCamera(2.6);
       endRun(false);
       return 'end';
     }

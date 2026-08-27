@@ -1,6 +1,6 @@
 // The opening screen: what the Snake Way is, the controls, and the button
 // that begins the pilgrimage.
-import { showPause } from './HUD.js';
+import { showPause, fadeOverlay, OVERLAY_FADE_MS } from './HUD.js';
 import { hideEndScreens } from './GameOver.js';
 
 let splashOverlay = null;
@@ -21,6 +21,8 @@ export function initStartScreen(root) {
     pointer-events: auto;
     padding: 24px;
     text-align: center;
+    opacity: 0;
+    transition: opacity ${OVERLAY_FADE_MS}ms ease;
   `;
   splashOverlay.innerHTML = `
     <div style="max-width: 580px; background: rgba(26, 22, 43, 0.9); border: 3px solid #c9a24b; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 140, 46, 0.5);">
@@ -55,13 +57,13 @@ export function initStartScreen(root) {
   root.appendChild(splashOverlay);
 
   splashOverlay.querySelector('#btn-start').addEventListener('click', () => {
-    splashOverlay.style.display = 'none';
+    fadeOverlay(splashOverlay, false);
     if (window.__startGame) window.__startGame();
   });
 }
 
 export function showSplash() {
-  if (splashOverlay) splashOverlay.style.display = 'flex';
+  fadeOverlay(splashOverlay, true);
   hideEndScreens();
   showPause(false);
 }
