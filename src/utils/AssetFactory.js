@@ -10,7 +10,8 @@ import { makePlayer } from '../entities/Player.js';
 import { makeAsuraDemon } from '../entities/AsuraDemon.js';
 import { makeEvilSoul } from '../entities/EvilSoul.js';
 import { makeRivalNaga } from '../entities/NagaChaser.js';
-import { makePillarObstacle, makeFirePit, makeBoulder, makeBrokenRoad } from '../entities/Obstacles.js';
+import { makeTempleArch, makeFirePit, makeBoulder, makeBrokenRoad } from '../entities/Obstacles.js';
+import { makeCobra } from '../entities/CobraSnake.js';
 import { makeGroundSegment } from '../environment/Track.js';
 import { makeTrishulProjectile } from '../systems/PowerSystem.js';
 import {
@@ -20,6 +21,7 @@ import {
   makeTree,
   makeVineCurtain,
   makeTorchBrazier,
+  makeStonePedestal,
 } from '../environment/Environment.js';
 import { makeInscription } from '../environment/Track.js';
 
@@ -321,12 +323,13 @@ export {
   makePlayer,
   makeTrishulProjectile,
   makeGroundSegment,
-  makePillarObstacle,
+  makeTempleArch,
   makeFirePit,
   makeBoulder,
   makeAsuraDemon,
   makeBrokenRoad,
   makeEvilSoul,
+  makeCobra,
   makeRudrakshaBead,
   makeOmGlyph,
   makePowerOrb,
@@ -337,6 +340,7 @@ export {
   makeTree,
   makeVineCurtain,
   makeTorchBrazier,
+  makeStonePedestal,
   makeInscription,
 };
 
@@ -346,12 +350,13 @@ window.__game.factories = Object.assign(window.__game.factories || {}, {
   makePlayer,
   makeTrishulProjectile,
   makeGroundSegment,
-  makePillarObstacle,
+  makeTempleArch,
   makeFirePit,
   makeBoulder,
   makeAsuraDemon,
   makeBrokenRoad,
   makeEvilSoul,
+  makeCobra,
   makeRudrakshaBead,
   makeOmGlyph,
   makePowerOrb,
@@ -362,5 +367,6 @@ window.__game.factories = Object.assign(window.__game.factories || {}, {
   makeTree,
   makeVineCurtain,
   makeTorchBrazier,
+  makeStonePedestal,
   makeInscription,
 });

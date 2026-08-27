@@ -3,28 +3,7 @@
 // torches that light the way, the night sky dome and Mount Kailash on the
 // horizon.
 import * as THREE from 'three';
-import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, createTorchLight } from './Lighting.js';
-
-// A soft radial falloff texture, for glows that must not read as a flat disc.
-// Returns null where there is no 2D canvas (headless), and callers then skip
-// the glow rather than drawing a hard circle.
-function makeRadialGlowTexture() {
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-    g.addColorStop(0.0, 'rgba(205, 228, 255, 0.55)');
-    g.addColorStop(0.35, 'rgba(150, 195, 255, 0.18)');
-    g.addColorStop(1.0, 'rgba(110, 165, 255, 0.0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 256, 256);
-    return new THREE.CanvasTexture(canvas);
-  } catch (e) {
-    return null;
-  }
-}
+import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, createTorchLight, makeRadialGlowTexture } from './Lighting.js';
 
 // ===== ASSET id=mount-kailash-peak label="Mount Kailash Distant Peak" role=scenery =====
 function makeMountKailash() {
@@ -70,7 +49,9 @@ function makeMountKailash() {
 
   // Soft blue-white halo of divine light. A radial falloff plane rather than a
   // sphere: an unlit sphere at this distance just reads as a hard flat disc.
-  const glowTex = makeRadialGlowTexture();
+  const glowTex = makeRadialGlowTexture(
+    'rgba(205, 228, 255, 0.55)', 'rgba(150, 195, 255, 0.18)', 'rgba(110, 165, 255, 0.0)'
+  );
   if (glowTex) {
     const halo = new THREE.Mesh(
       new THREE.PlaneGeometry(460, 460),
@@ -312,6 +293,64 @@ function makeVineCurtain() {
 }
 // ===== END ASSET =====
 
+// ===== ASSET id=stone-pedestal label="Mossy Stone Pedestal" role=scenery =====
+function makeStonePedestal() {
+  // ART DIRECTION: silhouette = a squat carved block at the path's edge, its
+  // crown gone green; signature = a chamfered cap over a recessed carved panel,
+  // moss lying in flat patches on top; colors = warm stone #9b8060, moss
+  // #33502a. Decoration - it stands clear of the running lanes.
+  const pedestal = new THREE.Group();
+
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x9b8060, roughness: 0.92, metalness: 0.02 });
+  const stoneDarkMat = new THREE.MeshStandardMaterial({ color: 0x74604a, roughness: 0.95 });
+  const carveMat = new THREE.MeshStandardMaterial({ color: 0xb2916c, roughness: 0.88 });
+  const mossMat = new THREE.MeshStandardMaterial({ color: 0x33502a, roughness: 1.0 });
+
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.18, 1.15), stoneDarkMat);
+  plinth.position.set(0, 0.09, 0);
+  plinth.receiveShadow = true;
+  pedestal.add(plinth);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.78, 0.92), stoneMat);
+  body.position.set(0, 0.57, 0);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  pedestal.add(body);
+
+  // Recessed carved panel on each face
+  [[0, 0.475], [0, -0.475], [0.475, 0], [-0.475, 0]].forEach(([x, z]) => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(x === 0 ? 0.6 : 0.02, 0.44, x === 0 ? 0.02 : 0.6), stoneDarkMat);
+    panel.position.set(x, 0.57, z);
+    pedestal.add(panel);
+
+    const glyph = new THREE.Mesh(new THREE.BoxGeometry(x === 0 ? 0.34 : 0.03, 0.05, x === 0 ? 0.03 : 0.34), carveMat);
+    glyph.position.set(x * 1.02, 0.66, z * 1.02);
+    pedestal.add(glyph);
+  });
+
+  // Chamfered cap
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.16, 1.06), stoneMat);
+  cap.position.set(0, 1.04, 0);
+  cap.castShadow = true;
+  pedestal.add(cap);
+
+  // Moss lying in flat patches over the crown
+  const patches = [[-0.2, 0.16, 0.42, 0.3], [0.26, 0.1, -0.3, 0.34], [0.05, 0.34, 0.1, 0.26], [-0.34, 0.24, -0.18, 0.22]];
+  patches.forEach(([x, w, z, d]) => {
+    const moss = new THREE.Mesh(new THREE.BoxGeometry(w, 0.035, d), mossMat);
+    moss.position.set(x, 1.13, z);
+    pedestal.add(moss);
+  });
+
+  const mossSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.12, 0.94), mossMat);
+  mossSkirt.position.set(0, 0.24, 0);
+  pedestal.add(mossSkirt);
+
+  pedestal.userData.role = 'scenery';
+  return pedestal;
+}
+// ===== END ASSET =====
+
 // ===== ASSET id=path-torch label="Path Fire Torch" role=scenery =====
 function makeTorchBrazier() {
   // ART DIRECTION: silhouette = a carved stone bowl on a mossy pedestal with an
@@ -391,6 +430,10 @@ const TREE_SPACING = 9.0;
 const TREE_ROWS = 12;
 const TREE_OFFSET_X = 10.5;
 
+const PEDESTAL_SPACING = 24.0;
+const PEDESTAL_PAIRS = 5;
+const PEDESTAL_OFFSET_X = 4.9;
+
 const CURTAIN_SPACING = 36.0;
 const CURTAIN_COUNT = 4;
 
@@ -398,6 +441,7 @@ const pillarPool = [];
 const torchPool = [];
 const treePool = [];
 const curtainPool = [];
+const pedestalPool = [];
 
 let swayTime = 0;
 
@@ -456,6 +500,17 @@ export function createEnvironment(scene) {
     }
   }
 
+  // Mossy pedestals along the causeway edge, clear of the running lanes
+  for (let i = 0; i < PEDESTAL_PAIRS; i++) {
+    for (const side of [-1, 1]) {
+      const p = makeStonePedestal();
+      p.position.set(side * PEDESTAL_OFFSET_X, 0, -i * PEDESTAL_SPACING - 14);
+      p.rotation.y = (Math.random() - 0.5) * 0.3;
+      scene.add(p);
+      pedestalPool.push(p);
+    }
+  }
+
   // Occasional vine curtains hanging between the trees
   for (let i = 0; i < CURTAIN_COUNT; i++) {
     const side = i % 2 === 0 ? -1 : 1;
@@ -465,7 +520,7 @@ export function createEnvironment(scene) {
     curtainPool.push(c);
   }
 
-  return { pillarPool, torchPool, treePool, curtainPool };
+  return { pillarPool, torchPool, treePool, curtainPool, pedestalPool };
 }
 
 // Scrolls the roadside scenery, wraps it around behind the player, and sways
@@ -500,6 +555,13 @@ export function updateEnvironment(scrollDelta, dt = 0) {
     }
   });
 
+  pedestalPool.forEach(p => {
+    p.position.z += scrollDelta;
+    if (p.position.z > 14) {
+      p.position.z -= PEDESTAL_PAIRS * PEDESTAL_SPACING;
+    }
+  });
+
   curtainPool.forEach(c => {
     c.position.z += scrollDelta;
     if (c.position.z > 16) {
@@ -516,6 +578,7 @@ export {
   makeTree,
   makeVineCurtain,
   makeTorchBrazier,
+  makeStonePedestal,
   PILLAR_SPACING,
   TORCH_SPACING
 };

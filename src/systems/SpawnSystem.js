@@ -5,7 +5,8 @@ import { CONFIG } from '../utils/Constants.js';
 import { state } from '../core/GameState.js';
 import { swing } from '../utils/AnimationHelper.js';
 import { makeOmGlyph, makeRudrakshaBead, makePowerOrb } from '../utils/AssetFactory.js';
-import { getObstaclePool, updateBoulder } from '../entities/Obstacles.js';
+import { getObstaclePool, updateBoulder, updateFirePit } from '../entities/Obstacles.js';
+import { updateCobra } from '../entities/CobraSnake.js';
 import { getPlayer } from '../entities/Player.js';
 import { updateAsura } from '../entities/AsuraDemon.js';
 import { updateEvilSoul } from '../entities/EvilSoul.js';
@@ -20,6 +21,7 @@ let nextPowerOrbDist = 80;
 let lastAsuraDist = 0;
 let lastBrokenRoadDist = 0;
 let lastEvilSoulDist = 0;
+let lastCobraDist = 0;
 
 const omPool = [];
 const rudrakshaPool = [];
@@ -57,10 +59,11 @@ export function initSpawnSystem(scene, gameClock) {
 
 export function spawnObstacleAt(z) {
   const dist = state.distance;
-  const eligibleTypes = ['firePit', 'pillar', 'boulder'];
+  const eligibleTypes = ['firePit', 'archGate', 'boulder'];
 
   if (dist >= 150) eligibleTypes.push('evilSoul');
   if (dist >= 200) eligibleTypes.push('asura');
+  if (dist >= 250) eligibleTypes.push('cobra');
   if (dist >= 300) eligibleTypes.push('brokenRoad');
 
   // Priority check to guarantee consistent interval appearance
@@ -71,6 +74,8 @@ export function spawnObstacleAt(z) {
     chosenType = 'brokenRoad';
   } else if (dist >= 150 && (dist - lastEvilSoulDist) >= 150) {
     chosenType = 'evilSoul';
+  } else if (dist >= 250 && (dist - lastCobraDist) >= 180) {
+    chosenType = 'cobra';
   } else {
     chosenType = eligibleTypes[Math.floor(Math.random() * eligibleTypes.length)];
   }
@@ -86,6 +91,7 @@ export function spawnObstacleAt(z) {
   if (type === 'asura') lastAsuraDist = dist;
   if (type === 'brokenRoad') lastBrokenRoadDist = dist;
   if (type === 'evilSoul') lastEvilSoulDist = dist;
+  if (type === 'cobra') lastCobraDist = dist;
 
   const chosenLane = Math.floor(Math.random() * 3);
   const laneX = CONFIG.LANES[chosenLane];
@@ -162,13 +168,18 @@ export function updateObstacles(dt, scrollDelta) {
         updateAsura(obs, dt, scrollDelta, clock);
       } else if (oType === 'evilSoul') {
         updateEvilSoul(obs, scrollDelta, clock);
+      } else if (oType === 'cobra') {
+        // -z is still ahead of the player, so distance shrinks as it nears
+        updateCobra(obs, scrollDelta, clock, -obs.position.z);
       } else {
         obs.position.z += scrollDelta;
       }
 
-      // Boulder special spin & dust
+      // Boulder rolls as it travels; the fire pit's flames flicker
       if (oType === 'boulder') {
-        updateBoulder(obs, dt);
+        updateBoulder(obs, dt, state.speed);
+      } else if (oType === 'firePit') {
+        updateFirePit(obs, clock);
       }
 
       const outcome = resolveObstacleCollision(obs, oType);

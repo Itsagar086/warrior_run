@@ -83,6 +83,36 @@ export function setupLighting(scene, renderer) {
   return { moonLight, ambient };
 }
 
+// A soft radial falloff texture, for glows that must not read as a flat disc.
+// Returns null where there is no 2D canvas (headless); callers then skip the
+// glow rather than drawing a hard circle.
+export function makeRadialGlowTexture(inner, mid, outer) {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0.0, inner);
+    g.addColorStop(0.35, mid);
+    g.addColorStop(1.0, outer);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(canvas);
+  } catch (e) {
+    return null;
+  }
+}
+
+// The point light burning above a sacred fire pit. Registered for the same
+// flicker pass as the torches.
+export function createFireLight() {
+  const light = new THREE.PointLight(0xff5500, 2.4, 9);
+  light.userData.flickerPhase = Math.random() * Math.PI * 2;
+  torches.push(light);
+  return light;
+}
+
 // A warm point light for one path-side torch. Registered here so updateLighting
 // can flicker every torch in the scene.
 export function createTorchLight() {

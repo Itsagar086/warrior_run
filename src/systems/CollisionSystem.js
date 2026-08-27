@@ -27,14 +27,17 @@ export function resolveObstacleCollision(obs, oType) {
   else if (oType === 'boulder') { hitZ = 1.05; hitX = 1.05; }
 
   if (dx < hitX && dz < hitZ) {
-    // Safe land on top of Boulders
-    if (oType === 'boulder' && state.playerY >= 1.35 && state.playerVY <= 0) {
-      state.playerY = 1.5;
+    // Safe land on top of Boulders. The crown of the shell is the stand
+    // height the asset itself declares, so the devotee never floats above the
+    // rock or sinks into it when the boulder's size changes.
+    const standHeight = obs.userData.standHeight || 1.5;
+    if (oType === 'boulder' && state.playerY >= standHeight - 0.35 && state.playerVY <= 0) {
+      state.playerY = standHeight;
       state.playerVY = 0;
       state.isGrounded = true;
       state.canDoubleJump = true;
       // Remember the support so gravity resumes when the boulder passes
-      state.groundY = 1.5;
+      state.groundY = standHeight;
       state.standingOn = obs;
       return 'skip';
     }
