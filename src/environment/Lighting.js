@@ -104,13 +104,42 @@ export function makeRadialGlowTexture(inner, mid, outer) {
   }
 }
 
-// The point light burning above a sacred fire pit. Registered for the same
-// flicker pass as the torches.
-export function createFireLight() {
-  const light = new THREE.PointLight(0xff5500, 2.4, 9);
-  light.userData.flickerPhase = Math.random() * Math.PI * 2;
-  torches.push(light);
-  return light;
+// Lights for the sacred fire pits.
+//
+// These deliberately live on the scene rather than on the pits themselves.
+// three.js bakes the number of point lights into every shader's cache key, so a
+// light that appears and disappears with a pooled obstacle forces a full
+// recompile of every material each time one spawns - which is a hard multi
+// hundred millisecond freeze mid-run. Keeping the count fixed and moving the
+// lights onto whichever pits are live keeps exactly one set of programs alive
+// for the whole session.
+const fireLights = [];
+
+export function createFireLights(scene, count) {
+  for (let i = 0; i < count; i++) {
+    const light = new THREE.PointLight(0xff5500, 0, 9);
+    light.userData.flickerPhase = Math.random() * Math.PI * 2;
+    fireLights.push(light);
+    scene.add(light);
+  }
+  return fireLights;
+}
+
+// Parks each fire light on a live pit, and dims the spares to zero. Intensity 0
+// still counts as a light to the shader, so the program set never changes.
+const firePitWorld = new THREE.Vector3();
+export function syncFireLights(obstacles) {
+  let used = 0;
+  for (let i = 0; i < obstacles.length && used < fireLights.length; i++) {
+    const obs = obstacles[i];
+    if (!obs.visible || obs.userData.obstacleType !== 'firePit') continue;
+    obs.getWorldPosition(firePitWorld);
+    const light = fireLights[used++];
+    light.position.set(firePitWorld.x, firePitWorld.y + 0.95, firePitWorld.z);
+    const phase = light.userData.flickerPhase || 0;
+    light.intensity = (Math.sin(elapsed * 8 + phase) * 0.4 + 1.6) * 1.5;
+  }
+  for (let i = used; i < fireLights.length; i++) fireLights[i].intensity = 0;
 }
 
 // A warm point light for one path-side torch. Registered here so updateLighting

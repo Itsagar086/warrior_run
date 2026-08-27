@@ -3,7 +3,7 @@
 // causeway you must jump. Plus the shared recycled obstacle pool.
 import * as THREE from 'three';
 import { spawnFX } from '../systems/FXSystem.js';
-import { createFireLight, makeRadialGlowTexture } from '../environment/Lighting.js';
+import { makeRadialGlowTexture } from '../environment/Lighting.js';
 import { makeAsuraDemon } from './AsuraDemon.js';
 import { makeEvilSoul } from './EvilSoul.js';
 import { makeCobra } from './CobraSnake.js';
@@ -59,10 +59,9 @@ function makeFirePit() {
   });
   firePit.userData.flames = flames;
 
-  // Warm light thrown up out of the pit
-  const light = createFireLight();
-  light.position.set(0, 0.95, 0);
-  firePit.add(light);
+  // The pit's point light is not parented here on purpose - see syncFireLights
+  // in Lighting.js. A light that toggles with a pooled obstacle changes the
+  // scene's light count and forces three.js to recompile every shader.
 
   // Warm glow pooled on the flagstones around the pit
   const glowTex = makeRadialGlowTexture(
@@ -340,6 +339,9 @@ function makeBrokenRoad() {
 }
 // ===== END ASSET =====
 
+// Scratch vector reused by the dust trail, so the hot loop allocates nothing.
+const dustPoint = new THREE.Vector3();
+
 const OBSTACLE_POOL_SIZE = 21;
 const obstaclePool = [];
 
@@ -371,7 +373,8 @@ export function updateBoulder(obs, dt, speed) {
   if (core) core.rotation.x += speed * dt;
 
   if (Math.random() < 0.25) {
-    spawnFX(new THREE.Vector3(obs.position.x, 0.1, obs.position.z), '#8a7966', 1, 0.3);
+    dustPoint.set(obs.position.x, 0.1, obs.position.z);
+    spawnFX(dustPoint, '#8a7966', 1, 0.3);
   }
 }
 

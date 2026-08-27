@@ -13,6 +13,12 @@ let comboBadgeEl = null;
 let pauseOverlay = null;
 let bannerTimeoutId = null;
 
+// Last values pushed to the DOM, so the HUD only writes when something changes.
+const shown = {
+  punya: null, dist: null, distPct: null, shakti: null,
+  power: undefined, combo: null, lives: null
+};
+
 // Creates (or returns) the single overlay root every UI piece attaches to.
 export function createUIRoot() {
   const existing = document.getElementById('snake-way-ui-root');
@@ -266,16 +272,34 @@ export function initPauseOverlay(root) {
 }
 
 export function updateHUD(punya, distance, shakti, power, combo, lives) {
-  if (punyaValEl) punyaValEl.textContent = Math.floor(punya);
-  if (distValEl) distValEl.textContent = `${Math.floor(distance)}m / 2000m`;
+  const punyaWhole = Math.floor(punya);
+  if (punyaValEl && punyaWhole !== shown.punya) {
+    shown.punya = punyaWhole;
+    punyaValEl.textContent = punyaWhole;
+  }
+
+  const distWhole = Math.floor(distance);
+  if (distValEl && distWhole !== shown.dist) {
+    shown.dist = distWhole;
+    distValEl.textContent = `${distWhole}m / 2000m`;
+  }
   if (distBarEl) {
-    const pct = Math.min(100, (distance / 2000) * 100);
-    distBarEl.style.width = `${pct}%`;
+    // One decimal is finer than a pixel on that bar; anything more is churn.
+    const pct = Math.round(Math.min(100, (distance / 2000) * 100) * 10) / 10;
+    if (pct !== shown.distPct) {
+      shown.distPct = pct;
+      distBarEl.style.width = `${pct}%`;
+    }
   }
   if (shaktiBarEl) {
-    shaktiBarEl.style.width = `${Math.min(100, Math.max(0, shakti))}%`;
+    const pct = Math.round(Math.min(100, Math.max(0, shakti)));
+    if (pct !== shown.shakti) {
+      shown.shakti = pct;
+      shaktiBarEl.style.width = `${pct}%`;
+    }
   }
-  if (powerSlotEl) {
+  if (powerSlotEl && power !== shown.power) {
+    shown.power = power;
     if (power === 'sudarshan_chakra') {
       powerSlotEl.innerHTML = `<span style="color: #ffaa22;">⚡ SUDARSHAN CHAKRA</span> (READY)`;
     } else if (power === 'trishul') {
@@ -286,7 +310,8 @@ export function updateHUD(punya, distance, shakti, power, combo, lives) {
       powerSlotEl.innerHTML = `COLLECT POWER ORB`;
     }
   }
-  if (comboBadgeEl) {
+  if (comboBadgeEl && combo !== shown.combo) {
+    shown.combo = combo;
     if (combo > 1) {
       comboBadgeEl.style.display = 'inline-block';
       comboBadgeEl.textContent = `✨ ${combo}x PUNYA MULTIPLIER`;
@@ -296,7 +321,8 @@ export function updateHUD(punya, distance, shakti, power, combo, lives) {
   }
   // Update lives hearts display
   const livesEl = document.getElementById('hud-lives-val');
-  if (livesEl && lives !== undefined) {
+  if (livesEl && lives !== undefined && lives !== shown.lives) {
+    shown.lives = lives;
     const l = Math.max(0, Math.min(3, Math.floor(lives)));
     if (l === 3) livesEl.textContent = '♥♥♥';
     else if (l === 2) livesEl.textContent = '♥♥♡';
