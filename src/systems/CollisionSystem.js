@@ -14,6 +14,40 @@ import { asuraDeathBurst } from '../entities/AsuraDemon.js';
 import { endRun } from './ScoreSystem.js';
 import { shakeCamera } from '../core/CameraRig.js';
 
+// How much vertical space each hazard actually threatens, in world units.
+// THE fix for "I jumped clean over it and still died": collision used to test
+// only x/z, and height existed for exactly three special-cased types - every
+// other hazard killed the player at any altitude. Now each declares its
+// dangerous band, deliberately a touch smaller than the art so near-misses
+// feel like misses:
+//   firePit    flames on the road; feet above 0.35 sail over them
+//   boulder    the rock's mass (landing on top is handled separately)
+//   archGate   the crossbeam: its stone underside sits at 1.55, so the
+//              danger starts at 1.6 - nobody dies below the visible beam
+//   brokenRoad a pit - dangerous from below, cleared while airborne
+//   evilSoul   floats at head height; slide under it or leap clean over
+//   cobra      strikes low and mid - jump it; sliding into it is a bite
+//   asura      a charging wall of muscle up to 1.75, clearable near apex
+const HAZARD_SPAN = {
+  firePit: [0, 0.35],
+  boulder: [0.15, 1.55],
+  archGate: [1.6, 2.6],
+  brokenRoad: [-2.0, 0.5],
+  evilSoul: [1.2, 2.0],
+  cobra: [0, 1.35],
+  asura: [0, 1.75],
+};
+const DEFAULT_SPAN = [0, 1.6];
+
+// The player's own vertical band. Sliding hugs the road; airborne the legs
+// tuck, so the body is shorter than standing - which is exactly what makes
+// clearing a hazard by jumping physically honest instead of impossible.
+function playerBand() {
+  const bottom = state.playerY;
+  const height = state.isSliding ? 1.15 : (state.isGrounded ? 2.0 : 1.6);
+  return [bottom, bottom + height];
+}
+
 export function resolveObstacleCollision(obs, oType) {
   const player = getPlayer();
 
@@ -44,19 +78,14 @@ export function resolveObstacleCollision(obs, oType) {
       return 'skip';
     }
 
-    // FIRE PIT JUMP COLLISION FIX:
-    if (oType === 'firePit' && state.playerY >= 0.35) {
-      return 'skip';
-    }
-
-    // Broken road gap check: playerY >= 0.5 survives airborne, ground loses life
-    if (oType === 'brokenRoad' && state.playerY >= 0.5) {
-      return 'skip';
-    }
-
-    // Head-height hazards (evil souls) are cleared by sliding under them
-    if (obs.userData.duckable && state.isSliding) {
-      return 'skip';
+    // The vertical gate. Whatever the hazard, if the player's body band and
+    // the hazard's band do not overlap, there IS no contact: a jump that
+    // clears a slab clears it, a slide that fits under a beam fits. This one
+    // test replaces the old firePit / brokenRoad / duckable special cases.
+    const span = HAZARD_SPAN[oType] || DEFAULT_SPAN;
+    const [pBottom, pTop] = playerBand();
+    if (pBottom >= span[1] || pTop <= span[0]) {
+      return 'none';
     }
 
     // Shield protection absorbs hit completely
