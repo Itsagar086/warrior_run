@@ -296,7 +296,7 @@ export function initPauseOverlay(root) {
   });
 }
 
-export function updateHUD(punya, distance, shakti, power, combo, lives) {
+export function updateHUD(punya, distance, shakti, power, combo, lives, eternal = false, eternalMult = 1) {
   const punyaWhole = Math.floor(punya);
   if (punyaValEl && punyaWhole !== shown.punya) {
     shown.punya = punyaWhole;
@@ -306,7 +306,9 @@ export function updateHUD(punya, distance, shakti, power, combo, lives) {
   const distWhole = Math.floor(distance);
   if (distValEl && distWhole !== shown.dist) {
     shown.dist = distWhole;
-    distValEl.textContent = `${distWhole}m / 2000m`;
+    distValEl.textContent = eternal
+      ? `${distWhole}m \u00b7 \u00d7${eternalMult} PUNYA`
+      : `${distWhole}m / 2000m`;
   }
   if (distBarEl) {
     // One decimal is finer than a pixel on that bar; anything more is churn.

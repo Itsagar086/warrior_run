@@ -17,6 +17,38 @@ import { resolveNagaChase } from '../entities/NagaChaser.js';
 import { resolveObstacleCollision } from './CollisionSystem.js';
 import { collectOm, collectRudraksha } from './ScoreSystem.js';
 import { collectPowerOrb } from './PowerSystem.js';
+import { showBanner } from '../ui/HUD.js';
+import { setStageMood } from '../environment/Lighting.js';
+
+// Which pilgrimage stage the run is in; -1 so the first tick announces
+// stage I. Stages come from CONFIG.STAGES and drive spawn gap, paired
+// hazards, forced-interval pressure and power-orb cadence.
+let stageIdx = -1;
+const STAGE_NUMERALS = ['I', 'II', 'III', 'IV'];
+
+function currentStage() {
+  // Beyond Kailash the table ends and the path deepens forever: every 500m is
+  // a new unnamed league - tighter gaps, more paired hazards, faster orbs -
+  // easing toward hard floors so it stays brutal but never impossible.
+  if (state.eternal && state.distance >= CONFIG.KAILASH_DISTANCE) {
+    const k = Math.floor((state.distance - CONFIG.KAILASH_DISTANCE) / 500) + 1;
+    return {
+      at: CONFIG.KAILASH_DISTANCE + (k - 1) * 500,
+      name: `THE ETERNAL PATH \u00b7 LEAGUE ${k}`,
+      moodIndex: 4,
+      gap: Math.max(10.5, 12.0 - k * 0.25),
+      dual: Math.min(0.5, 0.42 + k * 0.02),
+      pressure: Math.max(0.5, 0.62 - k * 0.02),
+      orbEvery: Math.max(44, 50 - k),
+      arcChance: 0.14,
+      crossBonus: 200,
+    };
+  }
+  const stages = CONFIG.STAGES;
+  let s = stages[0];
+  for (const stage of stages) if (state.distance >= stage.at) s = stage;
+  return s;
+}
 
 let nextObstacleDist = 20;
 let nextCollectibleDist = 8;
@@ -66,8 +98,9 @@ export function initSpawnSystem(scene, gameClock) {
   });
 }
 
-export function spawnObstacleAt(z) {
+export function spawnObstacleAt(z, excludeLane = null) {
   const dist = state.distance;
+  const stage = currentStage();
   const eligibleTypes = ['firePit', 'archGate', 'boulder'];
 
   if (dist >= 150) eligibleTypes.push('evilSoul');
@@ -75,15 +108,17 @@ export function spawnObstacleAt(z) {
   if (dist >= 250) eligibleTypes.push('cobra');
   if (dist >= 300) eligibleTypes.push('brokenRoad');
 
-  // Priority check to guarantee consistent interval appearance
+  // Forced intervals guarantee the signature hazards keep appearing; the
+  // stage's pressure factor shortens every interval as the pilgrimage climbs.
+  const p = stage.pressure;
   let chosenType = null;
-  if (dist >= 200 && (dist - lastAsuraDist) >= 140) {
+  if (dist >= 200 && (dist - lastAsuraDist) >= 140 * p) {
     chosenType = 'asura';
-  } else if (dist >= 300 && (dist - lastBrokenRoadDist) >= 250) {
+  } else if (dist >= 300 && (dist - lastBrokenRoadDist) >= 250 * p) {
     chosenType = 'brokenRoad';
-  } else if (dist >= 150 && (dist - lastEvilSoulDist) >= 150) {
+  } else if (dist >= 150 && (dist - lastEvilSoulDist) >= 150 * p) {
     chosenType = 'evilSoul';
-  } else if (dist >= 250 && (dist - lastCobraDist) >= 180) {
+  } else if (dist >= 250 && (dist - lastCobraDist) >= 180 * p) {
     chosenType = 'cobra';
   } else {
     chosenType = eligibleTypes[Math.floor(Math.random() * eligibleTypes.length)];
@@ -102,7 +137,10 @@ export function spawnObstacleAt(z) {
   if (type === 'evilSoul') lastEvilSoulDist = dist;
   if (type === 'cobra') lastCobraDist = dist;
 
-  const chosenLane = Math.floor(Math.random() * 3);
+  let chosenLane = Math.floor(Math.random() * 3);
+  if (excludeLane !== null && chosenLane === excludeLane) {
+    chosenLane = (chosenLane + 1 + Math.floor(Math.random() * 2)) % 3;
+  }
   const laneX = CONFIG.LANES[chosenLane];
 
   freeObs.position.set(laneX, CONFIG.SURFACE_Y, z);
@@ -112,6 +150,7 @@ export function spawnObstacleAt(z) {
     // Per-instance phase, so two souls on screen do not drift in lockstep
     freeObs.userData.soulPhase = Math.random() * Math.PI * 2;
   }
+  return chosenLane;
 }
 
 // Beads arrive in a curved run of 3-5 rather than singly. Two shapes: a sweep
@@ -146,9 +185,14 @@ function spawnRudrakshaArc(z) {
 }
 
 export function spawnCollectibleAt(z) {
-  // Bead arcs are rare: each one is worth several singles, so the rate is set
-  // to keep beads-per-metre about where it was when they spawned alone.
-  if (Math.random() < 0.05 && spawnRudrakshaArc(z)) {
+  // Bead arcs get more frequent as the path gets crueller - later stages pay
+  // better, which is what makes pushing deep feel worth the risk.
+  const stage = currentStage();
+  const tableIdx = CONFIG.STAGES.indexOf(stage);
+  const arcChance = stage.arcChance !== undefined
+    ? stage.arcChance
+    : 0.05 + Math.max(0, tableIdx) * 0.025;
+  if (Math.random() < arcChance && spawnRudrakshaArc(z)) {
     return;
   }
 
@@ -180,10 +224,34 @@ function spawnPowerOrbAt(z) {
 
 // Distance-driven spawn triggers.
 export function updateSpawning() {
+  const stage = currentStage();
+
+  // Announce each stage as it begins: banner, lighting mood, and - for every
+  // stage after the first - a punya reward for having walked this far.
+  if (stage.at !== stageIdx) {
+    const first = stageIdx === -1;
+    stageIdx = stage.at;
+    const tableIdx = CONFIG.STAGES.indexOf(stage);
+    const numeral = tableIdx >= 0 ? STAGE_NUMERALS[tableIdx] : '\u221e';
+    showBanner(`\u26f0\ufe0f ${numeral} \u00b7 ${stage.name}`, 2.6);
+    setStageMood(stage.moodIndex !== undefined ? stage.moodIndex : Math.max(0, tableIdx));
+    if (!first) {
+      const bonus = (stage.crossBonus || 150 * Math.max(1, tableIdx)) * state.eternalMult;
+      state.punya += bonus;
+    }
+  }
+
   // Spawn Obstacles & Pickups based on distance traveled
   if (state.distance >= nextObstacleDist) {
-    spawnObstacleAt(CONFIG.SPAWN_Z);
-    nextObstacleDist = state.distance + (18.0 - (state.speed - CONFIG.BASE_SPEED) * 0.35);
+    const usedLane = spawnObstacleAt(CONFIG.SPAWN_Z);
+    // Paired hazards: a second one in a DIFFERENT lane at the same depth.
+    // Two of three lanes blocked always leaves a clean lane - plus the jump
+    // or slide answer on the blocked ones - so pairs raise pressure without
+    // ever being unfair.
+    if (usedLane !== null && usedLane !== undefined && Math.random() < stage.dual) {
+      spawnObstacleAt(CONFIG.SPAWN_Z, usedLane);
+    }
+    nextObstacleDist = state.distance + Math.max(10.0, stage.gap - (state.speed - CONFIG.BASE_SPEED) * 0.15);
   }
   if (state.distance >= nextCollectibleDist) {
     spawnCollectibleAt(CONFIG.SPAWN_Z - 2);
@@ -191,7 +259,7 @@ export function updateSpawning() {
   }
   if (state.distance >= nextPowerOrbDist) {
     spawnPowerOrbAt(CONFIG.SPAWN_Z - 4);
-    nextPowerOrbDist = state.distance + 95.0;
+    nextPowerOrbDist = state.distance + stage.orbEvery;
   }
 }
 
@@ -300,6 +368,8 @@ export function updateCollectibles(dt, scrollDelta) {
 }
 
 export function resetSpawns() {
+  stageIdx = -1;
+  setStageMood(0);
   nextObstacleDist = 20;
   nextCollectibleDist = 8;
   nextPowerOrbDist = 80;

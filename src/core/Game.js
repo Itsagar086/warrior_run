@@ -23,7 +23,7 @@ import { createNaga, triggerNagaChase, updateNaga, hideNaga } from '../entities/
 import { createWarmLights, syncWarmLights } from '../environment/Lighting.js';
 import { createUIRoot, initHUD, initPauseOverlay, updateHUD, showBanner, showPause } from '../ui/HUD.js';
 import { initStartScreen, showSplash } from '../ui/StartScreen.js';
-import { initGameOverScreens, showGameOver } from '../ui/GameOver.js';
+import { initGameOverScreens, showGameOver, showAscension, hideAscension } from '../ui/GameOver.js';
 
 import { initCameraRig, updateCamera } from './CameraRig.js';
 import { initInput } from './InputHandler.js';
@@ -157,10 +157,20 @@ function updateSimulation(dt) {
   // Base Punya score climbs with distance
   addDistancePunya(scrollDelta);
 
-  // Distance Goal Check (2000m to Kailash)
-  if (state.distance >= CONFIG.KAILASH_DISTANCE) {
-    endRun(true);
+  // Distance Goal Check (2000m to Kailash). Reaching the mountain is a
+  // CHOICE now: ascend and complete the pilgrimage, or walk the Eternal Path
+  // beyond it - an endless run with deepening stages and multiplied punya.
+  if (!state.eternal && state.distance >= CONFIG.KAILASH_DISTANCE) {
+    state.phase = 'ascension';
+    showAscension(state.punya);
     return;
+  }
+  // Beyond Kailash, every 1000m walked deepens the blessing.
+  if (state.eternal && state.distance >= state.nextMultDist) {
+    state.eternalMult += 1;
+    state.nextMultDist += 1000;
+    playSound('om');
+    showBanner(`\ud83d\udd49\ufe0f PUNYA \u00d7${state.eternalMult} \u2014 THE PATH DEEPENS`, 2.6);
   }
 
   // Naga Chase Trigger Check
@@ -185,7 +195,7 @@ function updateSimulation(dt) {
   if (state.phase !== 'playing') return; // the Naga's strike ended the run
 
   // Update HUD
-  updateHUD(state.punya, state.distance, state.shakti, state.activePower, state.combo, state.lives);
+  updateHUD(state.punya, state.distance, state.shakti, state.activePower, state.combo, state.lives, state.eternal, state.eternalMult);
 }
 // ===== END SYSTEM =====
 
@@ -213,6 +223,9 @@ window.__startGame = function() {
   state.combo = 1;
   state.comboTimer = 0;
   state.pathMistakes = 0;
+  state.eternal = false;
+  state.eternalMult = 1;
+  state.nextMultDist = 3000;
   state.chase.active = false;
   state.chase.survived = 0;
   state.chase.nextDist = CONFIG.NAGA_CHASE_INTERVAL;
@@ -232,6 +245,21 @@ window.__startGame = function() {
 
 window.__restartGame = function() {
   window.__startGame();
+};
+
+// The two answers to the mountain. Both arrive from the ascension overlay.
+window.__ascendAtKailash = function() {
+  hideAscension();
+  endRun(true);
+};
+window.__walkEternalPath = function() {
+  hideAscension();
+  state.eternal = true;
+  state.eternalMult = 2;
+  state.nextMultDist = 3000;
+  state.phase = 'playing';
+  playSound('power');
+  showBanner('\ud83c\udf0c THE ETERNAL PATH \u2014 PUNYA \u00d72', 3.0);
 };
 // ===== END SYSTEM =====
 

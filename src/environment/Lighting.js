@@ -34,6 +34,23 @@ const TORCH_DISTANCE = 8;
 
 let elapsed = 0;
 let moonLight = null;
+let hemiLight = null;
+
+// One mood per pilgrimage stage: the moon retints as the path climbs. Colours
+// only - no lights are added or removed, so the shader programs (and the
+// perf work that fixed them) are untouched. The lerp lives in updateLighting.
+const STAGE_MOODS = [
+  0xcfe0ff,   // I    the forest path - cold clear moonlight
+  0xc2e6d6,   // II   the serpent's coils - a green-tinged night
+  0xe8cfae,   // III  the burning ghats - ember-warmed
+  0xe6ecff,   // IV   kailash's shadow - pale summit light
+  0xd9c6ff,   // V+   the eternal path - otherworldly violet
+];
+const moodTarget = { moon: 0xcfe0ff };
+
+export function setStageMood(index) {
+  moodTarget.moon = STAGE_MOODS[Math.min(index, STAGE_MOODS.length - 1)];
+}
 
 // Installs the night rig, replacing whatever the engine set up.
 export function setupLighting(scene, renderer) {
@@ -79,7 +96,8 @@ export function setupLighting(scene, renderer) {
 
   // Cool sky over warm ground bounce. Without this the moonlit stone loses all
   // its colour on the shadow side and the path reads brown instead of sand.
-  const sky = new THREE.HemisphereLight(0x8fa8d8, 0x3a2c1f, 0.75);
+  hemiLight = new THREE.HemisphereLight(0x8fa8d8, 0x3a2c1f, 0.75);
+  const sky = hemiLight;
   sky.position.set(0, 20, 0);
   scene.add(sky);
 
@@ -167,7 +185,14 @@ export function syncWarmLights(emitters) {
 
 // Advances the clock the flame flicker runs on. The lights themselves are
 // positioned and lit by syncWarmLights once per frame.
+const moodColor = new THREE.Color();
 export function updateLighting(dt) {
+  // Ease the moon toward the current stage's mood
+  if (moonLight) {
+    moodColor.setHex(moodTarget.moon);
+    moonLight.color.lerp(moodColor, Math.min(1, dt * 1.2));
+  }
+
   elapsed += dt;
 }
 

@@ -7,6 +7,11 @@ export const state = {
   punya: 0,
   shakti: 40,
   maxShakti: 100,
+  // The Eternal Path: set when the pilgrim declines to ascend at Kailash and
+  // walks on. Punya gains multiply, and deepen every 1000m walked beyond.
+  eternal: false,
+  eternalMult: 1,
+  nextMultDist: 3000,
   distance: 0,
   lives: 3,
   lane: 1, // 0: left, 1: center, 2: right

@@ -169,7 +169,12 @@ export function triggerDivinePower() {
     resolveNagaChase(true);
   }
 
-  state.activePower = null;
+  // The power stays primed while there is energy banked for another cast.
+  // Nulling it after every use was what made powers feel scarce: 60 shakti in
+  // the bar bought exactly one cast, and the rest evaporated.
+  if (state.shakti < CONFIG.POWER_SHAKTI_COST) {
+    state.activePower = null;
+  }
 }
 
 export function launchProjectile(type, laneX, startY) {

@@ -35,6 +35,20 @@ export const CONFIG = {
   SURFACE_Y: 0.0,
   RUDRAKSHA_PUNYA_MULT: 3,
   OM_GLYPH_PUNYA: 10,
-  SHAKTI_PER_ORB: 25,
+  // An orb banks more than one cast (cost 25), and Om glyphs trickle energy
+  // in - so a well-flown line can chain divine powers instead of rationing
+  // one per orb.
+  SHAKTI_PER_ORB: 35,
   POWER_SHAKTI_COST: 25,
+
+  // The pilgrimage in four stages. Each stage tightens the spawn gap, raises
+  // the chance of paired hazards (two lanes at once - there is always a clean
+  // third lane, plus the jump/slide answer), applies pressure to the forced
+  // hazard intervals, and hands out power orbs faster to match the danger.
+  STAGES: [
+    { at: 0,    name: 'THE FOREST PATH',     gap: 18.0, dual: 0.0,  pressure: 1.0,  orbEvery: 80 },
+    { at: 500,  name: "THE SERPENT'S COILS", gap: 15.5, dual: 0.18, pressure: 0.85, orbEvery: 68 },
+    { at: 1000, name: 'THE BURNING GHATS',   gap: 13.5, dual: 0.30, pressure: 0.72, orbEvery: 58 },
+    { at: 1500, name: "KAILASH'S SHADOW",    gap: 12.0, dual: 0.42, pressure: 0.62, orbEvery: 50 },
+  ],
 };

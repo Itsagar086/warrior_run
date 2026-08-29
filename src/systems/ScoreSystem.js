@@ -12,7 +12,7 @@ const BEST_KEY = 'naga-loka-runner:best';
 
 // Merit accrues simply for covering ground, scaled by the active combo.
 export function addDistancePunya(scrollDelta) {
-  state.punya += scrollDelta * 0.5 * state.combo;
+  state.punya += scrollDelta * 0.5 * state.combo * state.eternalMult;
 }
 
 export function updateCombo(dt) {
@@ -28,8 +28,8 @@ export function updateCombo(dt) {
 // Om glyph: a little merit and a trickle of Shakti.
 export function collectOm(om) {
   om.visible = false;
-  state.punya += CONFIG.OM_GLYPH_PUNYA * state.combo;
-  state.shakti = Math.min(state.maxShakti, state.shakti + 1.5);
+  state.punya += CONFIG.OM_GLYPH_PUNYA * state.combo * state.eternalMult;
+  state.shakti = Math.min(state.maxShakti, state.shakti + 2.5);
   playSound('om');
   spawnFX(om.position, '#ffaa22', 12);
 }
@@ -39,7 +39,7 @@ export function collectRudraksha(r) {
   r.visible = false;
   state.combo = Math.min(6, state.combo + CONFIG.RUDRAKSHA_PUNYA_MULT - 1);
   state.comboTimer = 12.0; // 12 seconds multiplier extension
-  state.punya += 75 * state.combo;
+  state.punya += 75 * state.combo * state.eternalMult;
   state.shakti = Math.min(state.maxShakti, state.shakti + 15);
   playSound('rudraksha');
   spawnFX(r.position, '#ffffff', 26);
@@ -86,4 +86,11 @@ export function endRun(isVictory) {
     distance: state.bestDistance,
     isNewBest
   });
+  // The eternal path has no 2000m goal line; label the distance accordingly.
+  const distEl = document.getElementById('go-dist-val');
+  if (distEl && state.eternal) {
+    distEl.textContent = `${Math.floor(state.distance)}m`;
+    const parent = distEl.parentElement;
+    if (parent) parent.innerHTML = `Walked Beyond Kailash: <b style="color: #b79cff; font-size: 20px;">${Math.floor(state.distance)}m</b> \u00b7 \u00d7${state.eternalMult} punya`;
+  }
 }
