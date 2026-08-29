@@ -135,19 +135,12 @@ export function getProjectilePool() {
   return projectilePool;
 }
 
-export function triggerDivinePower() {
-  if (state.phase !== 'playing') return;
-  if (!state.activePower) {
-    showBanner('COLLECT POWER ORB FIRST!', 1.2);
-    return;
-  }
-  if (state.shakti < CONFIG.POWER_SHAKTI_COST) {
-    showBanner('NEED MORE SHAKTI ENERGY!', 1.2);
-    return;
-  }
+const DIVINE_POWERS = ['sudarshan_chakra', 'trishul', 'vishnu_shield'];
 
-  const power = state.activePower;
-  state.shakti = Math.max(0, state.shakti - CONFIG.POWER_SHAKTI_COST);
+// One place that actually performs a power, shared by both systems: E spends
+// the held power, C spends a full Shakti bar on a random one.
+function executePower(power) {
+  state.lastPowerUsed = power;
   playSound('power');
 
   if (power === 'sudarshan_chakra') {
@@ -168,13 +161,29 @@ export function triggerDivinePower() {
   if (state.chase.active) {
     resolveNagaChase(true);
   }
+}
 
-  // The power stays primed while there is energy banked for another cast.
-  // Nulling it after every use was what made powers feel scarce: 60 shakti in
-  // the bar bought exactly one cast, and the rest evaporated.
-  if (state.shakti < CONFIG.POWER_SHAKTI_COST) {
-    state.activePower = null;
+// E - use the power in hand. Never touches the Shakti bar.
+export function useHeldPower() {
+  if (state.phase !== 'playing') return;
+  if (!state.heldPower) {
+    showBanner('NO DIVINE POWER IN HAND \u2014 GRAB AN ORB!', 1.2);
+    return;
   }
+  const power = state.heldPower;
+  state.heldPower = null;
+  executePower(power);
+}
+
+// C - unleash the Shakti ultimate. Never touches the held power.
+export function unleashUltimate() {
+  if (state.phase !== 'playing') return;
+  if (state.shakti < state.maxShakti) {
+    showBanner(`SHAKTI ${Math.floor(state.shakti)}/${state.maxShakti} \u2014 FILL THE BAR TO UNLEASH`, 1.2);
+    return;
+  }
+  state.shakti = 0;
+  executePower(DIVINE_POWERS[Math.floor(Math.random() * DIVINE_POWERS.length)]);
 }
 
 export function launchProjectile(type, laneX, startY) {
@@ -195,15 +204,20 @@ export function launchProjectile(type, laneX, startY) {
 // Power orb pickup: tops up Shakti and primes the next power in the cycle.
 export function collectPowerOrb(orb) {
   orb.visible = false;
-  state.shakti = Math.min(state.maxShakti, state.shakti + CONFIG.SHAKTI_PER_ORB);
-  // Each pickup grants the power it depicts, so what you see is what you get
-  state.activePower = orb.userData.power || 'sudarshan_chakra';
+  // The orb's power goes IN HAND - what you see on the track is what you get,
+  // and the newest pickup replaces whatever you were holding. The Shakti bar
+  // is deliberately untouched: these are two separate systems.
+  state.heldPower = orb.userData.power || 'sudarshan_chakra';
 
   playSound('power');
   spawnFX(orb.position, '#4de0c0', 20);
 
-  const powerName = state.activePower.replace('_', ' ').toUpperCase();
-  showBanner(`✨ DIVINE POWER PRIMED: ${powerName}! ✨`, 2.2);
+  const NAMES = {
+    sudarshan_chakra: '\u26a1 SUDARSHAN CHAKRA',
+    trishul: '\ud83d\udd31 SHIVA\'S TRISHUL',
+    vishnu_shield: '\ud83d\udee1\ufe0f VISHNU\'S SHIELD',
+  };
+  showBanner(`${NAMES[state.heldPower]} IN HAND \u2014 PRESS E!`, 2.0);
 }
 
 // Flies active bolts down the lane and blasts whatever they touch.

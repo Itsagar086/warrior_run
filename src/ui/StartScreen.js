@@ -43,10 +43,12 @@ export function initStartScreen(root) {
           • <b>S / Down:</b> Slide Under
         </div>
         <div style="font-size: 13px; color: #ffe6aa;">
-          <b>✨ DIVINE POWERS:</b><br>
-          • <b>Shift / Tap:</b> Cast Power<br>
-          • <b>Chakra:</b> Blasts lane ahead<br>
-          • <b>Trishul / Shield:</b> Triple lane blast & barrier
+          <b>✨ DIVINE POWERS (E):</b><br>
+          • Grab an orb on the track \u2014 its power goes in your hand<br>
+          • <b>Press E</b> to use it \u00b7 Chakra blasts your lane \u00b7 Trishul sweeps all three \u00b7 Shield guards you<br>
+          <b style="color:#ffd700;">\ud83d\udd25 SHAKTI ULTIMATE (C):</b><br>
+          • The bar starts empty and fills from <b>Om +3</b> and <b>Beads +12</b> (never from orbs)<br>
+          • When FULL, <b>press C</b> \u2014 a RANDOM divine power erupts and the bar empties
         </div>
       </div>
       <button id="btn-start" style="background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #ffd700; color: #ffffff; font-size: 18px; font-weight: 900; letter-spacing: 1.5px; padding: 14px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,140,46,0.8); transition: transform 0.15s, box-shadow 0.15s;">

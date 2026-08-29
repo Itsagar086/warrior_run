@@ -195,7 +195,7 @@ function updateSimulation(dt) {
   if (state.phase !== 'playing') return; // the Naga's strike ended the run
 
   // Update HUD
-  updateHUD(state.punya, state.distance, state.shakti, state.activePower, state.combo, state.lives, state.eternal, state.eternalMult);
+  updateHUD(state.punya, state.distance, state.shakti, state.heldPower, state.combo, state.lives, state.eternal, state.eternalMult);
 }
 // ===== END SYSTEM =====
 
@@ -203,7 +203,7 @@ function updateSimulation(dt) {
 window.__startGame = function() {
   state.phase = 'playing';
   state.punya = 0;
-  state.shakti = 40;
+  state.shakti = 0;
   state.lives = 3;
   state.stumbleTimer = 0;
   state.distance = 0;
@@ -218,7 +218,8 @@ window.__startGame = function() {
   state.isGrounded = true;
   state.canDoubleJump = true;
   state.isSliding = false;
-  state.activePower = 'sudarshan_chakra';
+  state.heldPower = null;
+  state.lastPowerUsed = null;
   state.shieldTimer = 0;
   state.combo = 1;
   state.comboTimer = 0;

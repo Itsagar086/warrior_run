@@ -35,11 +35,14 @@ export const CONFIG = {
   SURFACE_Y: 0.0,
   RUDRAKSHA_PUNYA_MULT: 3,
   OM_GLYPH_PUNYA: 10,
-  // An orb banks more than one cast (cost 25), and Om glyphs trickle energy
-  // in - so a well-flown line can chain divine powers instead of rationing
-  // one per orb.
-  SHAKTI_PER_ORB: 35,
-  POWER_SHAKTI_COST: 25,
+  // TWO independent divine systems:
+  //   E - the HELD power: orbs carry a specific power; grab it, press E to
+  //       use it, the hand empties. Shakti is untouched throughout.
+  //   C - the SHAKTI ULTIMATE: starts at 0, charges ONLY from Om glyphs and
+  //       Rudraksha beads (never from power orbs), and at 100 erupts one
+  //       RANDOM power, draining back to 0.
+  SHAKTI_PER_OM: 3,
+  SHAKTI_PER_BEAD: 12,
 
   // The pilgrimage in four stages. Each stage tightens the spawn gap, raises
   // the chance of paired hazards (two lanes at once - there is always a clean

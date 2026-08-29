@@ -29,7 +29,7 @@ export function updateCombo(dt) {
 export function collectOm(om) {
   om.visible = false;
   state.punya += CONFIG.OM_GLYPH_PUNYA * state.combo * state.eternalMult;
-  state.shakti = Math.min(state.maxShakti, state.shakti + 2.5);
+  state.shakti = Math.min(state.maxShakti, state.shakti + CONFIG.SHAKTI_PER_OM);
   playSound('om');
   spawnFX(om.position, '#ffaa22', 12);
 }
@@ -40,7 +40,7 @@ export function collectRudraksha(r) {
   state.combo = Math.min(6, state.combo + CONFIG.RUDRAKSHA_PUNYA_MULT - 1);
   state.comboTimer = 12.0; // 12 seconds multiplier extension
   state.punya += 75 * state.combo * state.eternalMult;
-  state.shakti = Math.min(state.maxShakti, state.shakti + 15);
+  state.shakti = Math.min(state.maxShakti, state.shakti + CONFIG.SHAKTI_PER_BEAD);
   playSound('rudraksha');
   spawnFX(r.position, '#ffffff', 26);
   showBanner('🕉️ SACRED RUDRAKSHA! 3x PUNYA MULTIPLIER! 🕉️', 2.0);

@@ -25,7 +25,8 @@ export const state = {
   canDoubleJump: true,
   isSliding: false,
   slideTimer: 0,
-  activePower: null, // 'sudarshan_chakra' | 'trishul' | 'vishnu_shield'
+  heldPower: null,     // the power in hand (from an orb), spent with E
+  lastPowerUsed: null, // which power the last use (E or C) delivered
   shieldTimer: 0,
   speed: 16.0,
   combo: 1,

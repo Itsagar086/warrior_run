@@ -2,7 +2,7 @@
 // actions. Pause lives here too - it is a control, not a game rule.
 import { state } from './GameState.js';
 import { switchLane, doJump, doSlide } from '../entities/Player.js';
-import { triggerDivinePower } from '../systems/PowerSystem.js';
+import { useHeldPower, unleashUltimate } from '../systems/PowerSystem.js';
 import { showPause } from '../ui/HUD.js';
 
 const keys = {};
@@ -21,7 +21,8 @@ window.__togglePause = togglePause;
 window.__inputLaneChange = switchLane;
 window.__inputJump = doJump;
 window.__inputSlide = doSlide;
-window.__triggerPower = triggerDivinePower;
+window.__triggerPower = useHeldPower;
+window.__triggerUltimate = unleashUltimate;
 
 export function initInput() {
   window.addEventListener('keydown', (e) => {
@@ -36,8 +37,10 @@ export function initInput() {
       doJump();
     } else if (e.code === 'KeyS' || e.code === 'ArrowDown') {
       doSlide();
-    } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyE') {
-      triggerDivinePower();
+    } else if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      useHeldPower();
+    } else if (e.code === 'KeyC') {
+      unleashUltimate();
     } else if (e.code === 'KeyP' || e.code === 'Escape') {
       togglePause();
     } else if (e.code === 'Enter') {

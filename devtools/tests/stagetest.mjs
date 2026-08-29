@@ -93,21 +93,68 @@ const report = await ev(`(async () => {
     });
   }
 
-  // Power keep-primed rule: 70 shakti = two casts of the primed power, then a
-  // third attempt is refused with the power cleared.
+  // TWO-SYSTEM contract, the field-report requirements as assertions:
+  //   1. orbs put a power IN HAND and NEVER charge shakti;
+  //   2. E uses the held power and NEVER drains shakti;
+  //   3. C needs a FULL bar, erupts a random power, drains to 0,
+  //      and never touches the held power;
+  //   4. the bar charges only from oms (+3) and beads (+12).
+  const { useHeldPower, unleashUltimate, collectPowerOrb } = await import('/src/systems/PowerSystem.js');
+  const { collectOm, collectRudraksha } = await import('/src/systems/ScoreSystem.js');
   state.phase = 'playing';
-  state.activePower = 'sudarshan_chakra';
-  state.shakti = 70; state.chase.active = false;
-  triggerDivinePower();
-  const afterOne = { shakti: state.shakti, power: state.activePower };
-  triggerDivinePower();
-  const afterTwo = { shakti: state.shakti, power: state.activePower };
-  triggerDivinePower();
-  const afterThree = { shakti: state.shakti, power: state.activePower };
+  state.chase.active = false;
+  state.shakti = 30; state.heldPower = null; state.lastPowerUsed = null;
+
+  collectPowerOrb({ visible: true, position: { x: 0, y: 1, z: 0 }, userData: { power: 'trishul' } });
+  const afterOrb = { held: state.heldPower, shakti: state.shakti };
+
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e', bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e', bubbles: true }));
+  const afterE = { used: state.lastPowerUsed, held: state.heldPower, shakti: state.shakti };
+
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e', bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e', bubbles: true }));
+  const afterEmptyE = { held: state.heldPower, shakti: state.shakti };
+
+  state.shakti = 60;
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyC', key: 'c', bubbles: true }));
+  const cRefused = state.shakti;
+
+  state.heldPower = 'vishnu_shield';
+  state.shakti = 100; state.shieldTimer = 0;
+  window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyC', key: 'c', bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyC', key: 'c', bubbles: true }));
+  const afterC = { shakti: state.shakti, used: state.lastPowerUsed, heldUntouched: state.heldPower };
+
+  const seen = new Set();
+  let alwaysEmptied = true;
+  for (let i = 0; i < 15; i++) {
+    state.shakti = 100; state.shieldTimer = 0;
+    unleashUltimate();
+    if (state.shakti !== 0) alwaysEmptied = false;
+    seen.add(state.lastPowerUsed);
+  }
+
+  state.shakti = 10; state.heldPower = null;
+  collectOm({ visible: true, position: { x: 0, y: 1, z: 0 } });
+  const afterOmCharge = state.shakti;
+  collectRudraksha({ visible: true, position: { x: 0, y: 1, z: 0 } });
+  const afterBeadCharge = state.shakti;
+
+  const { updateHUD } = await import('/src/ui/HUD.js');
+  updateHUD(0, 100, 100, 'trishul', 1, 3);
+  const hudReady = document.getElementById('hud-power-slot').textContent
+    + ' | ' + document.getElementById('hud-held-power').textContent;
+  updateHUD(0, 100, 47, null, 1, 3);
+  const hudCharging = document.getElementById('hud-power-slot').textContent
+    + ' | ' + document.getElementById('hud-held-power').textContent;
 
   state.distance = savedDistance; state.speed = savedSpeed; state.phase = savedPhase;
   resetSpawns();
-  return { stages, afterOne, afterTwo, afterThree };
+  return { stages, afterOrb, afterE, afterEmptyE, cRefused, afterC,
+           distinctPowers: [...seen], alwaysEmptied,
+           afterOmCharge, afterBeadCharge, hudReady, hudCharging };
 })()`);
 
 if (!report || report.__error) { console.error('FAILED:', JSON.stringify(report)); }
@@ -118,13 +165,25 @@ else {
     const dualOk = Math.abs(s.dualRate - s.expectDual) < 0.14;
     console.log(`  ${gapOk && dualOk ? 'PASS' : 'FAIL'}  ${s.name.padEnd(20)} gap ${s.meanGap} (want ~${s.expectGap})  duals ${s.dualRate} (want ~${s.expectDual})  spawns ${s.spawns}`);
   }
-  console.log('power chaining: after cast1', JSON.stringify(report.afterOne),
-              '| cast2', JSON.stringify(report.afterTwo),
-              '| cast3', JSON.stringify(report.afterThree));
-  const chainOk = report.afterOne.shakti === 45 && report.afterOne.power === 'sudarshan_chakra'
-    && report.afterTwo.shakti === 20 && report.afterTwo.power === null
-    && report.afterThree.shakti === 20;
-  console.log(chainOk ? 'PASS  power keep-primed economy' : 'FAIL  power keep-primed economy');
+  console.log('orb pickup   :', JSON.stringify(report.afterOrb));
+  console.log('E use        :', JSON.stringify(report.afterE), '| empty-hand E:', JSON.stringify(report.afterEmptyE));
+  console.log('C refused@60 :', report.cRefused, '| C full:', JSON.stringify(report.afterC));
+  console.log('random powers:', JSON.stringify(report.distinctPowers), '| always drained:', report.alwaysEmptied);
+  console.log('charging     : om 10 ->', report.afterOmCharge, '| bead ->', report.afterBeadCharge);
+  const ok =
+    report.afterOrb.held === 'trishul' && report.afterOrb.shakti === 30 &&
+    report.afterE.used === 'trishul' && report.afterE.held === null && report.afterE.shakti === 30 &&
+    report.afterEmptyE.held === null && report.afterEmptyE.shakti === 30 &&
+    report.cRefused === 60 &&
+    report.afterC.shakti === 0 && report.afterC.heldUntouched === 'vishnu_shield' &&
+    report.distinctPowers.length >= 2 && report.alwaysEmptied &&
+    report.afterOmCharge === 13 && report.afterBeadCharge === 25;
+  console.log(ok ? 'PASS  two-system contract (E hand / C ultimate, fully independent)'
+                 : 'FAIL  two-system contract');
+  const hudOk = /PRESS C/.test(report.hudReady) && /TRISHUL IN HAND/.test(report.hudReady)
+    && /CHARGING 47\/100/.test(report.hudCharging) && /NO POWER IN HAND/.test(report.hudCharging);
+  console.log(hudOk ? 'PASS  HUD truthfulness (ultimate line + held line)'
+                    : 'FAIL  HUD: ' + JSON.stringify([report.hudReady, report.hudCharging]));
 }
 ws.close(); ch.kill(); srv.close();
 try { fs.rmSync(prof, { recursive: true, force: true }); } catch {}

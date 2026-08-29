@@ -185,11 +185,14 @@ export function initHUD(root) {
         ⚡ SHAKTI ENERGY
       </div>
     </div>
-    <div style="width: 100%; height: 10px; background: rgba(255, 255, 255, 0.15); border-radius: 5px; overflow: hidden;">
-      <div id="hud-shakti-bar" style="width: 40%; height: 100%; background: linear-gradient(90deg, #ff8c2e, #ffe666); box-shadow: 0 0 8px #ff8c2e; transition: width 0.2s;"></div>
+    <div style="position: relative; width: 100%; height: 10px; background: rgba(255, 255, 255, 0.15); border-radius: 5px; overflow: hidden;">
+      <div id="hud-shakti-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ff8c2e, #ffe666); box-shadow: 0 0 8px #ff8c2e; transition: width 0.2s, filter 0.2s, box-shadow 0.2s;"></div>
     </div>
     <div id="hud-power-slot" style="font-size: 11px; font-weight: 800; color: #c9a24b; margin-top: 2px; text-align: center;">
-      DIVINE POWER: NONE
+      CHARGING 0/100
+    </div>
+    <div id="hud-held-power" style="font-size: 11px; font-weight: 800; color: #8f86ad; margin-top: 1px; text-align: center;">
+      NO POWER IN HAND
     </div>
   `;
   hudContainer.appendChild(shaktiCard);
@@ -245,7 +248,8 @@ export function initHUD(root) {
     <div style="display: flex; gap: 12px;">
       <button id="btn-slide" style="width: 58px; height: 58px; border-radius: 50%; background: rgba(32,36,63,0.85); border: 2px solid #4de0c0; color: #4de0c0; font-size: 13px; font-weight: 900; box-shadow: 0 4px 12px rgba(0,0,0,0.5); cursor: pointer;">SLIDE<br>▼</button>
       <button id="btn-jump" style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #fff; color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 4px 16px rgba(255,140,46,0.6); cursor: pointer;">JUMP<br>▲</button>
-      <button id="btn-power" style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #3a2f6b, #4de0c0); border: 2px solid #c9a24b; color: #fff; font-size: 12px; font-weight: 900; box-shadow: 0 4px 16px rgba(77,224,192,0.5); cursor: pointer;">DIVINE<br>POWER</button>
+      <button id="btn-power" style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #3a2f6b, #4de0c0); border: 2px solid #c9a24b; color: #fff; font-size: 12px; font-weight: 900; box-shadow: 0 4px 16px rgba(77,224,192,0.5); cursor: pointer;">POWER<br>(E)</button>
+      <button id="btn-ult" style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #6b2f3a, #ffd700); border: 2px solid #ffd700; color: #fff; font-size: 12px; font-weight: 900; box-shadow: 0 4px 16px rgba(255,215,0,0.5); cursor: pointer;">ULT<br>(C)</button>
     </div>
   `;
   root.appendChild(touchControls);
@@ -255,6 +259,7 @@ export function initHUD(root) {
   touchControls.querySelector('#btn-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__inputJump) window.__inputJump(); });
   touchControls.querySelector('#btn-slide').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__inputSlide) window.__inputSlide(); });
   touchControls.querySelector('#btn-power').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__triggerPower) window.__triggerPower(); });
+  touchControls.querySelector('#btn-ult').addEventListener('pointerdown', (e) => { e.preventDefault(); if (window.__triggerUltimate) window.__triggerUltimate(); });
 }
 
 export function initPauseOverlay(root) {
@@ -325,16 +330,37 @@ export function updateHUD(punya, distance, shakti, power, combo, lives, eternal 
       shaktiBarEl.style.width = `${pct}%`;
     }
   }
-  if (powerSlotEl && power !== shown.power) {
-    shown.power = power;
-    if (power === 'sudarshan_chakra') {
-      powerSlotEl.innerHTML = `<span style="color: #ffaa22;">⚡ SUDARSHAN CHAKRA</span> (READY)`;
-    } else if (power === 'trishul') {
-      powerSlotEl.innerHTML = `<span style="color: #dbe5eb;">🔱 SHIVA'S TRISHUL</span> (READY)`;
-    } else if (power === 'vishnu_shield') {
-      powerSlotEl.innerHTML = `<span style="color: #4de0c0;">🛡️ VISHNU'S SHIELD</span> (READY)`;
-    } else {
-      powerSlotEl.innerHTML = `COLLECT POWER ORB`;
+  // Two lines, two truths. Line one is the C ultimate: how charged, or ready.
+  // Line two is the E system: which power is in hand right now.
+  if (powerSlotEl) {
+    const level = Math.floor(Math.min(100, Math.max(0, shakti)));
+    const full = level >= 100;
+    const heldNames = {
+      sudarshan_chakra: ['\u26a1 CHAKRA IN HAND \u2014 PRESS E', '#ffaa22'],
+      trishul: ['\ud83d\udd31 TRISHUL IN HAND \u2014 PRESS E', '#dbe5eb'],
+      vishnu_shield: ['\ud83d\udee1\ufe0f SHIELD IN HAND \u2014 PRESS E', '#4de0c0'],
+    };
+    const slotKey = `${full ? 'FULL' : 'c' + level}|${power || 'none'}`;
+    if (slotKey !== shown.power) {
+      shown.power = slotKey;
+      if (full) {
+        powerSlotEl.innerHTML = `<span style="color: #ffd700; text-shadow: 0 0 8px #ffaa22;">\ud83d\udd25 ULTIMATE READY \u2014 PRESS C</span>`;
+        shaktiBarEl.style.filter = 'none';
+        shaktiBarEl.style.boxShadow = '0 0 16px #ffd700';
+      } else {
+        powerSlotEl.innerHTML = `ULTIMATE CHARGING ${level}/100`;
+        shaktiBarEl.style.filter = 'saturate(0.55) brightness(0.9)';
+        shaktiBarEl.style.boxShadow = '0 0 8px #ff8c2e';
+      }
+      const heldEl = document.getElementById('hud-held-power');
+      if (heldEl) {
+        const entry = heldNames[power];
+        if (entry) {
+          heldEl.innerHTML = `<span style="color: ${entry[1]};">${entry[0]}</span>`;
+        } else {
+          heldEl.innerHTML = 'NO POWER IN HAND';
+        }
+      }
     }
   }
   if (comboBadgeEl && combo !== shown.combo) {
