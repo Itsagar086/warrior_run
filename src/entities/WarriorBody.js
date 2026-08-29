@@ -20,7 +20,7 @@ const HIP = 1.05, KNEE = 0.599, ANKLE = 0.113, SHOULDER = 1.715, HEAD_BONE = 1.8
 
 // Arm chain, hanging with a natural ~12 degree abduction baked into the sculpt
 // (the animation's swings sit on top of it). Left is -x, matching the game.
-const SHO = [0.222, SHOULDER, -0.008];
+const SHO = [0.232, SHOULDER, -0.008];
 const ARM_DIR = [0.208, -0.978, 0];
 const ELB = [SHO[0] + ARM_DIR[0] * 0.42, SHO[1] + ARM_DIR[1] * 0.42, SHO[2]];
 const WRI = [ELB[0] + 0.022, ELB[1] - 0.356, ELB[2] + 0.018];
@@ -41,11 +41,14 @@ function bodyOps() {
 
   /* the back - what the player actually sees */
   for (const s of [-1, 1]) {
-    O(tube(s * 0.035, 1.772, -0.02, s * 0.185, 1.692, -0.03, 0.047, 0.047), 0.045); // trapezius
-    O(orb(s * 0.250, 1.692, -0.005, 0.088), 0.04);                                  // deltoid
-    O(tube(s * 0.185, 1.60, -0.055, s * 0.110, 1.30, -0.035, 0.058, 0.050), 0.05);  // latissimus
-    O(blob(s * 0.088, 1.615, 0.095, 0.082, 0.062, 0.045), 0.04);                    // pectoral
+    O(tube(s * 0.035, 1.772, -0.02, s * 0.195, 1.692, -0.03, 0.052, 0.052), 0.045); // trapezius
+    O(orb(s * 0.264, 1.692, -0.005, 0.094), 0.04);                                  // deltoid
+    O(tube(s * 0.185, 1.60, -0.055, s * 0.110, 1.30, -0.035, 0.063, 0.054), 0.05);  // latissimus
+    O(blob(s * 0.088, 1.615, 0.095, 0.088, 0.066, 0.048), 0.04);                    // pectoral
     O(orb(s * 0.078, 1.015, -0.058, 0.070), 0.05);                                  // glute
+  }
+  for (const s of [-1, 1]) {
+    O(tube(s * 0.038, 1.18, -0.105, s * 0.042, 1.56, -0.112, 0.026, 0.026), 0.04);  // erector ridge
   }
   ops.push(cut(tube(0, 1.16, -0.158, 0, 1.70, -0.188, 0.028, 0.028), 0.05));        // spine groove
 
@@ -61,11 +64,11 @@ function bodyOps() {
     const S = [s * SHO[0], SHO[1], SHO[2]];
     const E = [s * ELB[0], ELB[1], ELB[2]];
     const W = [s * WRI[0], WRI[1], WRI[2]];
-    O(tube(S[0], S[1], S[2], E[0], E[1], E[2], 0.070, 0.056), 0.045);
-    O(orb(S[0] + s * 0.035, S[1] - 0.165, S[2] + 0.02, 0.062), 0.04);  // bicep
-    O(orb(E[0], E[1], E[2], 0.054), 0.03);                              // elbow
-    O(tube(E[0], E[1], E[2], W[0], W[1], W[2], 0.057, 0.038), 0.04);   // forearm (flexor-heavy)
-    O(blob(W[0], W[1] - 0.048, W[2] + 0.012, 0.052, 0.062, 0.058), 0.03); // fist
+    O(tube(S[0], S[1], S[2], E[0], E[1], E[2], 0.079, 0.061), 0.045);
+    O(orb(S[0] + s * 0.035, S[1] - 0.165, S[2] + 0.022, 0.070), 0.04); // bicep
+    O(orb(E[0], E[1], E[2], 0.058), 0.03);                              // elbow
+    O(tube(E[0], E[1], E[2], W[0], W[1], W[2], 0.065, 0.041), 0.04);   // forearm (flexor-heavy)
+    O(blob(W[0], W[1] - 0.048, W[2] + 0.014, 0.058, 0.068, 0.063), 0.03); // fist
   }
 
   /* legs */
@@ -73,14 +76,18 @@ function bodyOps() {
     const H = [s * LEG_X, HIP, 0.004];
     const K = [s * LEG_X, KNEE, 0.010];
     const A = [s * LEG_X, ANKLE, -0.012];
-    O(tube(H[0], H[1], H[2], K[0], K[1], K[2], 0.106, 0.076), 0.05);
-    O(blob(s * LEG_X, 0.86, 0.062, 0.062, 0.10, 0.052), 0.05);          // quadriceps
+    O(tube(H[0], H[1], H[2], K[0], K[1], K[2], 0.112, 0.080), 0.05);
+    O(blob(s * LEG_X, 0.86, 0.064, 0.068, 0.105, 0.056), 0.05);         // quadriceps
     O(orb(K[0], K[1], K[2], 0.070), 0.035);                              // knee
-    O(tube(K[0], K[1], K[2], A[0], A[1], A[2], 0.064, 0.040), 0.04);    // shin
-    O(blob(s * (LEG_X + 0.004), 0.455, -0.052, 0.054, 0.085, 0.054), 0.04); // calf
-    O(orb(A[0], A[1], A[2], 0.042), 0.03);                               // ankle
-    O(tube(A[0], A[1], A[2], s * LEG_X, 0.048, 0.132, 0.046, 0.033), 0.035); // foot
-    O(orb(s * LEG_X, 0.072, -0.055, 0.046), 0.03);                       // heel
+    O(tube(K[0], K[1], K[2], A[0], A[1], A[2], 0.070, 0.044), 0.04);    // shin
+    O(blob(s * (LEG_X + 0.004), 0.455, -0.056, 0.060, 0.092, 0.058), 0.04); // calf
+    O(orb(A[0], A[1], A[2], 0.045), 0.03);                               // ankle
+    O(orb(s * LEG_X, 0.075, -0.072, 0.052), 0.03);                       // heel
+    O(blob(s * LEG_X, 0.062, 0.052, 0.060, 0.050, 0.102), 0.035);        // instep
+    O(blob(s * LEG_X, 0.050, 0.152, 0.064, 0.040, 0.064), 0.03);         // forefoot
+    for (const tx of [-0.030, 0, 0.030]) {
+      O(blob(s * LEG_X + tx, 0.038, 0.206, 0.020, 0.018, 0.026), 0.02);  // toes
+    }
   }
 
   return ops;
@@ -177,7 +184,7 @@ export function buildWarrior() {
     bodySegs[boneIndex['forearm' + side]] = { segs: [seg([s * ELB[0], ELB[1], ELB[2]], [s * WRI[0], WRI[1] - 0.09, WRI[2] + 0.01])] };
     bodySegs[boneIndex['thigh' + side]] = { segs: [seg([s * LEG_X, HIP, 0.004], [s * LEG_X, KNEE, 0.010])] };
     bodySegs[boneIndex['shin' + side]] = { segs: [seg([s * LEG_X, KNEE, 0.010], [s * LEG_X, ANKLE, -0.012])] };
-    bodySegs[boneIndex['foot' + side]] = { segs: [seg([s * LEG_X, ANKLE, -0.012], [s * LEG_X, 0.05, 0.16])] };
+    bodySegs[boneIndex['foot' + side]] = { segs: [seg([s * LEG_X, ANKLE, -0.012], [s * LEG_X, 0.045, 0.20])] };
   }
   const P = (a, b) => [boneIndex[a], boneIndex[b]];
   const bodyPairs = [
@@ -252,19 +259,45 @@ export function buildWarrior() {
   tail.rotation.z = -0.18;
   B.torso.add(tail);
 
-  // Janeu: the sacred thread over the left shoulder, down to the right hip.
-  const janeuGeo = new THREE.TorusGeometry(1, 0.013, 5, 40);
-  janeuGeo.scale(0.155, 0.385, 1);
-  const janeu = new THREE.Mesh(janeuGeo, janeuMat);
+  // Janeu: the sacred thread, over the left shoulder and down to the right
+  // hip. A rigid ellipse plunged inside the chest and only its back arc ever
+  // showed - so instead the loop is TRACED ONTO THE BODY: every point of an
+  // ideal ellipse is walked along the sculpt's own distance field until it
+  // rests a thread's width above the skin (or the cloth, at the hip). The
+  // result hugs shoulder, chest, hip and back exactly like a worn thread.
   {
-    const v = new THREE.Vector3(0.435, 0.90, 0).normalize();   // shoulder-to-hip diagonal
-    const u = new THREE.Vector3(0, 0, 1);
-    const n = new THREE.Vector3().crossVectors(u, v);
-    const m = new THREE.Matrix4().makeBasis(u, v, n);
-    janeu.quaternion.setFromRotationMatrix(m);
+    const surface = (x, y, z) => Math.min(body.sdf(x, y, z), clothBake.sdf(x, y, z));
+    const CLEAR = 0.015;
+    const centre = new THREE.Vector3(-0.012, 1.40, 0.0);
+    const diag = new THREE.Vector3(-0.40, 0.917, 0).normalize();   // up over the LEFT shoulder
+    const points = [];
+    const pt = new THREE.Vector3();
+    for (let i = 0; i < 72; i++) {
+      const t = (i / 72) * Math.PI * 2;
+      pt.copy(centre)
+        .addScaledVector(diag, Math.cos(t) * 0.40)
+        .add(new THREE.Vector3(0, 0, Math.sin(t) * 0.20));
+      for (let k = 0; k < 8; k++) {
+        const d = surface(pt.x, pt.y, pt.z) - CLEAR;
+        if (Math.abs(d) < 0.002) break;
+        const h = 0.008;
+        const gx = surface(pt.x + h, pt.y, pt.z) - surface(pt.x - h, pt.y, pt.z);
+        const gy = surface(pt.x, pt.y + h, pt.z) - surface(pt.x, pt.y - h, pt.z);
+        const gz = surface(pt.x, pt.y, pt.z + h) - surface(pt.x, pt.y, pt.z - h);
+        const gl = Math.sqrt(gx * gx + gy * gy + gz * gz) || 1;
+        const step = Math.max(-0.05, Math.min(0.05, d));
+        pt.x -= (gx / gl) * step;
+        pt.y -= (gy / gl) * step;
+        pt.z -= (gz / gl) * step;
+      }
+      points.push(pt.clone());
+    }
+    const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal');
+    const janeuGeo = new THREE.TubeGeometry(curve, 144, 0.011, 7, true);
+    janeuGeo.translate(0, -HIP, 0);              // into torso-bone space
+    const janeu = new THREE.Mesh(janeuGeo, janeuMat);
+    B.torso.add(janeu);
   }
-  janeu.position.set(-0.015, 0.335, -0.005);
-  B.torso.add(janeu);
 
   // Rudraksha: neck (two loops), both upper arms, both wrists.
   const neckRing = new THREE.Mesh(beadRing(14, 0.088, 0.019), beadMat);
@@ -277,37 +310,50 @@ export function buildWarrior() {
   B.torso.add(neckRing2);
   for (const s of [-1, 1]) {
     const arm = B[s < 0 ? 'upperArmL' : 'upperArmR'];
-    const band = new THREE.Mesh(beadRing(10, 0.068, 0.017), beadMat);
+    const band = new THREE.Mesh(beadRing(11, 0.078, 0.018), beadMat);
     band.position.set(s * (ELB[0] - SHO[0]) * 0.45, (ELB[1] - SHO[1]) * 0.45, 0.002);
     band.rotation.z = s * -0.21;
     arm.add(band);
     const fore = B[s < 0 ? 'forearmL' : 'forearmR'];
-    const wrist = new THREE.Mesh(beadRing(9, 0.050, 0.015), beadMat);
+    const wrist = new THREE.Mesh(beadRing(10, 0.058, 0.016), beadMat);
     wrist.position.set(s * (WRI[0] - ELB[0]) * 0.76, (WRI[1] - ELB[1]) * 0.76, 0.010);
     fore.add(wrist);
   }
 
-  // Hair: a cap over the skull, the topknot bun and its tie.
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.104, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat
-  );
-  cap.position.set(0, 0.108, -0.008);
+  // Hair: pulled tight over the skull into a high crown bun - a thin cap
+  // that hugs the head, a mass at the nape where the hair gathers, and a
+  // two-tier bun sitting ON the crown with a bead tie at its base.
+  // The cap is the SKULL'S OWN ellipsoid, grown a few millimetres and tilted
+  // so the hairline sits high on the forehead and low at the nape - a sphere
+  // cap of any single radius either exposes the crown or swallows the face.
+  const capGeo = new THREE.SphereGeometry(1, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  capGeo.scale(0.106, 0.126, 0.112);
+  const cap = new THREE.Mesh(capGeo, hairMat);
+  cap.position.set(0, 0.112, -0.002);
+  cap.rotation.x = -0.45;
   cap.castShadow = true;
   B.head.add(cap);
-  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), hairMat);
-  bun.scale.set(1, 1.08, 1);
-  bun.position.set(0, 0.242, -0.035);
-  bun.castShadow = true;
-  B.head.add(bun);
-  const tie = new THREE.Mesh(new THREE.TorusGeometry(0.030, 0.010, 5, 10), beadMat);
+  const nape = new THREE.Mesh(new THREE.SphereGeometry(0.050, 10, 8), hairMat);
+  nape.scale.set(1.25, 0.75, 0.9);
+  nape.position.set(0, 0.038, -0.086);
+  B.head.add(nape);
+  const bunBase = new THREE.Mesh(new THREE.SphereGeometry(0.050, 10, 8), hairMat);
+  bunBase.scale.set(1.12, 0.82, 1.12);
+  bunBase.position.set(0, 0.252, -0.010);
+  bunBase.castShadow = true;
+  B.head.add(bunBase);
+  const bunTop = new THREE.Mesh(new THREE.SphereGeometry(0.036, 9, 7), hairMat);
+  bunTop.position.set(0, 0.296, -0.010);
+  B.head.add(bunTop);
+  const tie = new THREE.Mesh(new THREE.TorusGeometry(0.033, 0.009, 5, 12), beadMat);
   tie.geometry.rotateX(Math.PI / 2);
-  tie.position.set(0, 0.198, -0.033);
+  tie.position.set(0, 0.222, -0.009);
   B.head.add(tie);
 
   // Face marks: tilak and eyes. Small, but they stop the head reading blank
   // on the start screen.
   const tilak = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.05, 0.008), tilakMat);
-  tilak.position.set(0, 0.162, 0.104);
+  tilak.position.set(0, 0.128, 0.103);
   tilak.rotation.x = -0.12;
   B.head.add(tilak);
   for (const s of [-1, 1]) {

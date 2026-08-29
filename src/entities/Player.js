@@ -116,6 +116,7 @@ const trailGhosts = [];
 const trailHistory = [];
 let trailCursor = 0;
 let hitFlash = 0;
+let slideDrop = 0;
 
 // Builds the devotee, caches his joints and hangs Vishnu's shield on him.
 export function createPlayer(scene, gameClock) {
@@ -373,9 +374,11 @@ function animateRun(time, dt) {
   parts.leftLowerArm.rotation.x = -0.55 - swingForward(t + Math.PI + 0.6, 0.45);
   parts.rightLowerArm.rotation.x = -0.55 - swingForward(t + 0.6, 0.45);
 
-  // A sprinter's arms travel slightly across the body, not straight fore-aft
-  parts.leftUpperArm.rotation.z = 0.13 + swing(t + Math.PI, 0.08);
-  parts.rightUpperArm.rotation.z = -0.13 + swing(t, 0.08);
+  // Arms carried slightly OUT from the lats, swaying with the stride.
+  // Carrying them across the body pressed them into the torso and made the
+  // two arms read as different sizes mid-swing.
+  parts.leftUpperArm.rotation.z = -0.06 + swing(t + Math.PI, 0.06);
+  parts.rightUpperArm.rotation.z = 0.06 + swing(t, 0.06);
 
   // Ankles roll through the stride
   parts.leftFoot.rotation.x = swing(t + 0.9, 0.25);
@@ -400,25 +403,29 @@ function animateRun(time, dt) {
   prevStride = stride;
 }
 
-// Airborne: arms up, knees tucked, eased in so it does not snap.
+// Airborne: a hero leap. Arms raised and SPREAD - the old pose swung them
+// behind the torso, where the chase camera lost them. One knee drives up,
+// the trailing leg kicks back, the chest opens.
 function animateJump(dt) {
   const rate = 12;
-  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, -0.8, rate, dt);
-  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.8, rate, dt);
-  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.5, rate, dt);
-  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.5, rate, dt);
+  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, -0.55, rate, dt);
+  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.55, rate, dt);
+  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.35, rate, dt);
+  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.35, rate, dt);
+  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, -0.7, rate, dt);
+  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, 0.7, rate, dt);
 
-  parts.leftUpperLeg.rotation.x = approach(parts.leftUpperLeg.rotation.x, 0.6, rate, dt);
-  parts.rightUpperLeg.rotation.x = approach(parts.rightUpperLeg.rotation.x, 0.6, rate, dt);
-  parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 0.9, rate, dt);
-  parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 0.9, rate, dt);
+  parts.leftUpperLeg.rotation.x = approach(parts.leftUpperLeg.rotation.x, -0.85, rate, dt);
+  parts.rightUpperLeg.rotation.x = approach(parts.rightUpperLeg.rotation.x, 0.35, rate, dt);
+  parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 0.75, rate, dt);
+  parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 1.05, rate, dt);
+  parts.leftFoot.rotation.x = approach(parts.leftFoot.rotation.x, 0.35, rate, dt);
+  parts.rightFoot.rotation.x = approach(parts.rightFoot.rotation.x, 0.45, rate, dt);
 
-  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.05, rate, dt);
+  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.08, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
   parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
   parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
-  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, 0.2, rate, dt);
-  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, -0.2, rate, dt);
   parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
   parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
@@ -431,17 +438,17 @@ function animateSlide(dt) {
   parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 0.2, rate, dt);
   parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 0.25, rate, dt);
 
-  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, 0.9, rate, dt);
-  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.4, rate, dt);
-  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.3, rate, dt);
-  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.3, rate, dt);
+  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, 0.35, rate, dt);
+  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, 0.35, rate, dt);
+  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -0.25, rate, dt);
+  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -0.25, rate, dt);
 
-  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.6, rate, dt);
+  parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.45, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
   parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
   parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
-  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, 0.25, rate, dt);
-  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, -0.25, rate, dt);
+  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, -0.55, rate, dt);
+  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, 0.55, rate, dt);
   parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
   parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
@@ -499,14 +506,13 @@ function updatePlayer(dt) {
     }
   }
 
-  // Position Root. Sliding squashes the whole figure to half height and drops
-  // it half a unit, easing back over the slide's tail.
-  const targetSquash = state.isSliding ? 0.5 : 1.0;
-  player.scale.y = approach(player.scale.y, targetSquash, 14, dt);
+  // Position Root. Sliding used to SCALE the figure to half height, which
+  // flattened the sculpted body into paper. Now the hips drop instead: the
+  // torso and both thigh roots sink together after the pose writes, the legs
+  // fold forward, and the mesh keeps its volume all the way down.
+  const targetDrop = state.isSliding ? 0.42 : 0;
+  slideDrop = approach(slideDrop, targetDrop, 14, dt);
   player.position.y = state.playerY;
-
-  // Keep the shield a sphere while the body squashes underneath it
-  if (shieldMesh && player.scale.y > 0.01) shieldMesh.scale.y = 1 / player.scale.y;
 
   updateTrail();
 
@@ -519,6 +525,13 @@ function updatePlayer(dt) {
     } else {
       animateRun(clock.getElapsedTime(), dt);
     }
+
+    // The slide drop, applied AFTER the pose writes (they set absolute
+    // heights). The thigh roots are root-level bones, so they sink explicitly
+    // and rise back to HIP_Y as the drop eases out.
+    parts.torso.position.y -= slideDrop;
+    parts.leftUpperLeg.position.y = HIP_Y - slideDrop;
+    parts.rightUpperLeg.position.y = HIP_Y - slideDrop;
 
     updateDust(dt, state.isGrounded && !state.isSliding);
   }
