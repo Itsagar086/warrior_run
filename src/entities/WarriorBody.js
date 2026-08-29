@@ -81,12 +81,12 @@ function bodyOps() {
     O(orb(K[0], K[1], K[2], 0.070), 0.035);                              // knee
     O(tube(K[0], K[1], K[2], A[0], A[1], A[2], 0.070, 0.044), 0.04);    // shin
     O(blob(s * (LEG_X + 0.004), 0.455, -0.056, 0.060, 0.092, 0.058), 0.04); // calf
-    O(orb(A[0], A[1], A[2], 0.045), 0.03);                               // ankle
-    O(orb(s * LEG_X, 0.075, -0.072, 0.052), 0.03);                       // heel
-    O(blob(s * LEG_X, 0.062, 0.052, 0.060, 0.050, 0.102), 0.035);        // instep
-    O(blob(s * LEG_X, 0.050, 0.152, 0.064, 0.040, 0.064), 0.03);         // forefoot
-    for (const tx of [-0.030, 0, 0.030]) {
-      O(blob(s * LEG_X + tx, 0.038, 0.206, 0.020, 0.018, 0.026), 0.02);  // toes
+    O(orb(A[0], A[1], A[2], 0.047), 0.03);                               // ankle
+    O(blob(s * LEG_X, 0.070, -0.085, 0.056, 0.060, 0.062), 0.03);        // heel, projecting back
+    O(blob(s * LEG_X, 0.064, 0.055, 0.064, 0.058, 0.110), 0.035);        // instep
+    O(blob(s * LEG_X, 0.052, 0.160, 0.072, 0.048, 0.070), 0.03);         // forefoot
+    for (const tx of [-0.034, 0, 0.034]) {
+      O(blob(s * LEG_X + tx, 0.040, 0.218, 0.023, 0.021, 0.030), 0.02);  // toes
     }
   }
 
@@ -215,7 +215,15 @@ export function buildWarrior() {
   computeSkinAttributes(clothBake.geometry, clothSegs, clothPairs, 0.09);
 
   /* -------------------------------------------------------------- shading */
-  bakeVertexColors(body.geometry, body.sdf, { floor: 0.5 });
+  bakeVertexColors(body.geometry, body.sdf, {
+    floor: 0.5,
+    albedo(x, y, z, nx, ny, nz, out) {
+      let m = 1;
+      if (y < 0.13) m = 1 - 0.20 * Math.min(1, (0.13 - y) / 0.13);   // dust up the foot
+      if (y < 0.065 && ny < -0.2) m = 0.58;                          // the sole pad
+      out[0] = m; out[1] = m * 0.96; out[2] = m * 0.90;              // dusty, warm
+    },
+  });
   // Cloth AO samples the body too, so the wrap darkens where it meets skin.
   const combinedSdf = (x, y, z) => Math.min(clothBake.sdf(x, y, z), body.sdf(x, y, z));
   bakeVertexColors(clothBake.geometry, combinedSdf, { floor: 0.46 });

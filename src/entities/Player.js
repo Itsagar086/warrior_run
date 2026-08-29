@@ -354,25 +354,30 @@ function updateDust(dt, running) {
   parts.dust.visible = alive || running;
 }
 
-// Human running gait: legs alternate, lower legs follow through, arms swing
-// opposite, torso rocks and the head bobs at twice stride rate.
+// Human running gait, cadence-coupled to the game's actual speed. The old
+// version ran the legs at a fixed rate, so the faster the world scrolled the
+// more he seemed to float over it.
+let stridePhase = 0;
 function animateRun(time, dt) {
-  const t = time * 10;
+  stridePhase += dt * (5.5 + state.speed * 0.55);
+  const t = stridePhase;
 
-  // Legs drive from the hip, and the shin trails the thigh rather than moving
-  // with it - that lag is most of what separates a run from a march.
-  parts.leftUpperLeg.rotation.x = swing(t, 0.7);
-  parts.rightUpperLeg.rotation.x = swing(t + Math.PI, 0.7);
+  // Legs drive from the hip with a FORWARD bias - a runner lifts the knee
+  // higher than the leg trails behind - and the shin lags the thigh, with the
+  // heel kicking up hard on the backswing. That heel kick is also what shows
+  // the sole to the camera every stride.
+  parts.leftUpperLeg.rotation.x = -0.18 + swing(t, 0.75);
+  parts.rightUpperLeg.rotation.x = -0.18 + swing(t + Math.PI, 0.75);
 
-  parts.leftLowerLeg.rotation.x = swingForward(t + 0.5, 0.6);
-  parts.rightLowerLeg.rotation.x = swingForward(t + Math.PI + 0.5, 0.6);
+  parts.leftLowerLeg.rotation.x = swingForward(t + 0.55, 0.9);
+  parts.rightLowerLeg.rotation.x = swingForward(t + Math.PI + 0.55, 0.9);
 
-  parts.leftUpperArm.rotation.x = swing(t + Math.PI, 0.5);
-  parts.rightUpperArm.rotation.x = swing(t, 0.5);
+  parts.leftUpperArm.rotation.x = swing(t + Math.PI, 0.58);
+  parts.rightUpperArm.rotation.x = swing(t, 0.58);
 
-  // Elbows carried bent, opening on the backswing and tucking on the drive
-  parts.leftLowerArm.rotation.x = -0.55 - swingForward(t + Math.PI + 0.6, 0.45);
-  parts.rightLowerArm.rotation.x = -0.55 - swingForward(t + 0.6, 0.45);
+  // Elbows pumped hard, opening on the backswing and tucking on the drive
+  parts.leftLowerArm.rotation.x = -0.7 - swingForward(t + Math.PI + 0.6, 0.5);
+  parts.rightLowerArm.rotation.x = -0.7 - swingForward(t + 0.6, 0.5);
 
   // Arms carried slightly OUT from the lats, swaying with the stride.
   // Carrying them across the body pressed them into the torso and made the
@@ -380,21 +385,23 @@ function animateRun(time, dt) {
   parts.leftUpperArm.rotation.z = -0.06 + swing(t + Math.PI, 0.06);
   parts.rightUpperArm.rotation.z = 0.06 + swing(t, 0.06);
 
-  // Ankles roll through the stride
-  parts.leftFoot.rotation.x = swing(t + 0.9, 0.25);
-  parts.rightFoot.rotation.x = swing(t + Math.PI + 0.9, 0.25);
+  // Ankles roll through the stride with a toe-down bias, so the trailing
+  // foot plantar-flexes and its (darker, dusty) sole faces the camera.
+  parts.leftFoot.rotation.x = 0.18 + swing(t + 0.9, 0.4);
+  parts.rightFoot.rotation.x = 0.18 + swing(t + Math.PI + 0.9, 0.4);
 
   // Shoulders counter-rotate against the hips. This is the single biggest
   // reason the old gait read as robotic: the whole trunk was rigid.
   parts.torso.rotation.y = swing(t, 0.14);
   parts.torso.rotation.z = swing(t, 0.045);
-  parts.torso.rotation.x = 0.12 + bounce(t, 0.025);
-  parts.torso.position.y = HIP_Y + bounce(t, 0.035);
+  // Leaning harder into the run the faster the world comes at him
+  parts.torso.rotation.x = 0.10 + state.speed * 0.004 + bounce(t, 0.025);
+  parts.torso.position.y = HIP_Y + bounce(t, 0.045);
 
   // The head holds its line against the shoulder yaw and bobs twice a stride
   parts.head.rotation.y = swing(t + Math.PI, 0.08);
   parts.head.rotation.z = swing(t + Math.PI, 0.035);
-  parts.head.position.y = (HEAD_Y - HIP_Y) + swing(time * 20, 0.01);
+  parts.head.position.y = (HEAD_Y - HIP_Y) + swing(t * 2, 0.01);
 
   // Each zero crossing is one foot planting: puff dust under that foot
   const stride = Math.sin(t);
@@ -425,7 +432,10 @@ function animateJump(dt) {
   parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.08, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
   parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
-  parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
+  // Absolute, not approached: the slide drop is subtracted from this value
+  // after every pose write, so approaching from the already-dropped height
+  // feeds the drop back into itself and the torso tunnels underground.
+  parts.torso.position.y = HIP_Y;
   parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
   parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
 }
@@ -446,7 +456,7 @@ function animateSlide(dt) {
   parts.torso.rotation.x = approach(parts.torso.rotation.x, -0.45, rate, dt);
   parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
   parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
-  parts.torso.position.y = approach(parts.torso.position.y, HIP_Y, rate, dt);
+  parts.torso.position.y = HIP_Y;      // absolute - see animateJump
   parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, -0.55, rate, dt);
   parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, 0.55, rate, dt);
   parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
@@ -510,7 +520,7 @@ function updatePlayer(dt) {
   // flattened the sculpted body into paper. Now the hips drop instead: the
   // torso and both thigh roots sink together after the pose writes, the legs
   // fold forward, and the mesh keeps its volume all the way down.
-  const targetDrop = state.isSliding ? 0.42 : 0;
+  const targetDrop = state.isSliding ? 0.34 : 0;
   slideDrop = approach(slideDrop, targetDrop, 14, dt);
   player.position.y = state.playerY;
 
