@@ -1,6 +1,9 @@
-// The devotee warrior: a fully human figure built from primitives, rigged so
-// every joint pivots where a real one would, plus the running, jumping and
-// sliding animation and the dust his feet kick up.
+// The devotee warrior. The figure is one continuous, muscled, SKINNED mesh -
+// sculpted as blended signed-distance anatomy, polygonised with marching cubes
+// and weighted to a skeleton (see WarriorBody.js and utils/SdfKit.js). The
+// animation below drives the BONES: bones are Object3Ds, so the same rotation
+// writes that used to swing rigid group pivots now bend the mesh smoothly at
+// every joint. This file re-rigs nothing - it just runs him.
 import * as THREE from 'three';
 import { CONFIG } from '../utils/Constants.js';
 import { state } from '../core/GameState.js';
@@ -8,23 +11,15 @@ import { playSound } from '../systems/AudioSystem.js';
 import { spawnFX } from '../systems/FXSystem.js';
 import { swing, swingForward, bounce } from '../utils/AnimationHelper.js';
 import { shakeCamera } from '../core/CameraRig.js';
+import { buildWarrior } from './WarriorBody.js';
 
-const SKIN = 0xc47948;
-const HAIR = 0x2c1810;
-const TILAK = 0xff2200;
-const DHOTI = 0xf59e0b;
-const FOOT = 0x8a5a33;
-const THREAD = 0xffffff;
-
-// Joint heights, measured up from the soles so the figure stands on y = 0
-const FOOT_H = 0.08;
-const LOWER_LEG_H = 0.35;
-const UPPER_LEG_H = 0.38;
-const HIP_Y = FOOT_H + LOWER_LEG_H + UPPER_LEG_H; // 0.81
-const TORSO_H = 0.65;
-const SHOULDER_Y = HIP_Y + TORSO_H - 0.06;
-const UPPER_ARM_H = 0.35;
-const HEAD_Y = HIP_Y + TORSO_H + 0.26;
+// Joint heights, measured up from the soles so the figure stands on y = 0.
+// Read back off the built body in makePlayer, so a re-sculpt with different
+// proportions cannot silently desynchronise the animation from the mesh.
+let HIP_Y = 1.05;
+let SHOULDER_Y = 1.715;
+let HEAD_Y = 1.86;
+let TORSO_H = SHOULDER_Y - HIP_Y;
 
 const DUST_COUNT = 8;
 
@@ -39,194 +34,22 @@ const TRAIL_OPACITY = [0.15, 0.09, 0.045];
 // straight run does not just look like a thicker player.
 const TRAIL_FULL_AT = 0.85;
 
-// Moves a geometry so a limb rotates about its joint rather than its middle.
-// Guarded because the headless test harness stubs geometry out.
-function shiftGeometry(geo, x, y, z) {
-  if (typeof geo.translate === 'function') geo.translate(x, y, z);
-  return geo;
-}
-
-// Widens the top of a box and narrows its base, for a V-tapered torso. Applied
-// before shiftGeometry, while the geometry is still centred on its own origin.
-function taperGeometry(geo, topScale, bottomScale) {
-  const pos = geo.attributes && geo.attributes.position;
-  if (!pos || typeof pos.getY !== 'function') return geo;
-  for (let i = 0; i < pos.count; i++) {
-    const s = pos.getY(i) > 0 ? topScale : bottomScale;
-    pos.setX(i, pos.getX(i) * s);
-    pos.setZ(i, pos.getZ(i) * s);
-  }
-  pos.needsUpdate = true;
-  if (typeof geo.computeVertexNormals === 'function') geo.computeVertexNormals();
-  return geo;
-}
-
 // ===== ASSET id=devotee-warrior label="Devotee Warrior" role=player =====
 function makePlayer() {
-  // ART DIRECTION: silhouette = a lean human Hindu warrior mid-stride, bare
-  // chested above a saffron dhoti; signature = topknot bun, red tilak, the
-  // white sacred janeu thread crossing the torso; proportion = ~2.1 units tall,
-  // built as a real skeleton so the run reads as biomechanics not clockwork;
-  // colors = warm brown skin #8b5e3c, saffron #ff6600, dark hair #2c1810.
+  // ART DIRECTION: silhouette = a lean, strongly muscled Hindu warrior devotee;
+  // signature = topknot bun, rudraksha at the neck, both arms and both wrists,
+  // the janeu across the back, a knee-length saffron dhoti, bare feet;
+  // build = ONE continuous skinned mesh for the body and one for the cloth,
+  // bent by bones - which is why he moves like a body and not like a puppet.
   const playerGroup = new THREE.Group();
 
-  const skinMat = new THREE.MeshStandardMaterial({ color: SKIN, roughness: 0.72, metalness: 0.02 });
-  const skinShadeMat = new THREE.MeshStandardMaterial({ color: 0xa25f38, roughness: 0.8, metalness: 0.02 });
-  const hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.9 });
-  const tilakMat = new THREE.MeshStandardMaterial({ color: TILAK, emissive: TILAK, emissiveIntensity: 0.4, roughness: 0.5 });
-  const dhotiMat = new THREE.MeshStandardMaterial({ color: DHOTI, roughness: 0.8, metalness: 0.0 });
-  const dhotiDeepMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.85, metalness: 0.0 });
-  const footMat = new THREE.MeshStandardMaterial({ color: FOOT, roughness: 0.85 });
-  const threadMat = new THREE.MeshStandardMaterial({ color: THREAD, roughness: 0.4, emissive: 0xffffff, emissiveIntensity: 0.18 });
+  const W = buildWarrior();
+  playerGroup.add(W.root);
 
-  /* ---------------------------------------------------------------- torso */
-  // Pivots at the waist so the run's lean rocks from the hips
-  const torsoGeo = shiftGeometry(
-    taperGeometry(new THREE.BoxGeometry(0.55, TORSO_H, 0.28), 1.1, 0.86),
-    0, TORSO_H / 2, 0
-  );
-  const torso = new THREE.Mesh(torsoGeo, skinMat);
-  torso.name = 'torso';
-  torso.position.set(0, HIP_Y, 0);
-  torso.castShadow = true;
-  playerGroup.add(torso);
-
-  // The reference is a bare athletic back, so the torso box gets the muscle
-  // over the top of it: a broad shoulder yoke, two lats tapering to the waist,
-  // and a spine groove down the middle.
-  const shoulders = new THREE.Mesh(new THREE.CapsuleGeometry(0.145, 0.34, 6, 10), skinMat);
-  shoulders.rotation.z = Math.PI / 2;
-  shoulders.position.set(0, TORSO_H - 0.13, -0.01);
-  shoulders.scale.set(1, 1, 0.82);
-  shoulders.castShadow = true;
-  torso.add(shoulders);
-
-  [-1, 1].forEach(side => {
-    const lat = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.24, 6, 8), skinMat);
-    lat.position.set(side * 0.19, TORSO_H * 0.56, -0.02);
-    lat.rotation.z = side * 0.22;
-    lat.scale.set(1, 1, 0.7);
-    torso.add(lat);
-  });
-
-  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.05, TORSO_H * 0.72, 0.04), skinShadeMat);
-  spine.position.set(0, TORSO_H * 0.55, -0.145);
-  torso.add(spine);
-
-  // Neck, so the head does not sit straight on the shoulders
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.12, 8), skinMat);
-  neck.position.set(0, TORSO_H + 0.04, -0.01);
-  torso.add(neck);
-
-  // Sacred thread, worn diagonally across the chest and back
-  const janeu = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.015, 8, 20), threadMat);
-  janeu.name = 'janeu';
-  janeu.position.set(0, TORSO_H * 0.62, 0.01);
-  janeu.rotation.set(0.42, 0, 0.72);
-  janeu.scale.set(1.06, 1.06, 1.06);
-  torso.add(janeu);
-
-  /* ----------------------------------------------------------------- head */
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 18, 16), skinMat);
-  head.name = 'head';
-  head.position.set(0, HEAD_Y - HIP_Y, 0.01);
-  head.castShadow = true;
-  torso.add(head);
-
-  const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), hairMat);
-  hairBun.name = 'hairBun';
-  hairBun.position.set(0, 0.26, -0.06);
-  head.add(hairBun);
-
-  // Hair shell so the bun does not float off a bald head
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.283, 16, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
-  hairCap.name = 'hairCap';
-  hairCap.position.set(0, 0.01, -0.02);
-  head.add(hairCap);
-
-  const tilak = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 10), tilakMat);
-  tilak.name = 'tilak';
-  tilak.position.set(0, 0.07, 0.27);
-  tilak.rotation.x = Math.PI / 2;
-  head.add(tilak);
-
-  /* ---------------------------------------------------------------- dhoti */
-  const dhotiGeo = taperGeometry(new THREE.BoxGeometry(0.52, 0.55, 0.26), 0.86, 1.22);
-  const dhoti = new THREE.Mesh(dhotiGeo, dhotiMat);
-  dhoti.name = 'dhoti';
-  dhoti.position.set(0, HIP_Y - 0.16, 0);
-  dhoti.castShadow = true;
-  playerGroup.add(dhoti);
-
-  // Waist sash, and the loose fold of cloth hanging at the hip
-  const sash = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.27, 0.1, 12), dhotiDeepMat);
-  sash.position.set(0, HIP_Y + 0.06, 0);
-  dhoti.parent.add(sash);
-
-  const fold = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.34, 0.07), dhotiDeepMat);
-  fold.position.set(0.21, HIP_Y - 0.2, 0.07);
-  fold.rotation.z = -0.2;
-  playerGroup.add(fold);
-
-  /* ----------------------------------------------------------------- arms */
-  function buildArm(side) {
-    const sign = side === 'left' ? -1 : 1;
-
-    const upperGeo = shiftGeometry(new THREE.CylinderGeometry(0.1, 0.09, UPPER_ARM_H, 10), 0, -UPPER_ARM_H / 2, 0);
-    const upperArm = new THREE.Mesh(upperGeo, skinMat);
-    upperArm.name = side + 'UpperArm';
-    upperArm.position.set(sign * 0.34, SHOULDER_Y - HIP_Y, 0);
-    upperArm.castShadow = true;
-    torso.add(upperArm);
-
-    const lowerGeo = shiftGeometry(new THREE.CylinderGeometry(0.09, 0.08, 0.32, 10), 0, -0.16, 0);
-    const lowerArm = new THREE.Mesh(lowerGeo, skinMat);
-    lowerArm.name = side + 'LowerArm';
-    lowerArm.position.set(0, -UPPER_ARM_H, 0);
-    lowerArm.castShadow = true;
-    upperArm.add(lowerArm);
-
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), skinMat);
-    hand.name = side + 'Hand';
-    hand.position.set(0, -0.34, 0.01);
-    lowerArm.add(hand);
-
-    return { upperArm, lowerArm };
-  }
-
-  const leftArm = buildArm('left');
-  const rightArm = buildArm('right');
-
-  /* ----------------------------------------------------------------- legs */
-  function buildLeg(side) {
-    const sign = side === 'left' ? -1 : 1;
-
-    const upperGeo = shiftGeometry(new THREE.CylinderGeometry(0.12, 0.11, UPPER_LEG_H, 10), 0, -UPPER_LEG_H / 2, 0);
-    const upperLeg = new THREE.Mesh(upperGeo, skinMat);
-    upperLeg.name = side + 'UpperLeg';
-    upperLeg.position.set(sign * 0.14, HIP_Y, 0);
-    upperLeg.castShadow = true;
-    playerGroup.add(upperLeg);
-
-    const lowerGeo = shiftGeometry(new THREE.CylinderGeometry(0.1, 0.09, LOWER_LEG_H, 10), 0, -LOWER_LEG_H / 2, 0);
-    const lowerLeg = new THREE.Mesh(lowerGeo, skinMat);
-    lowerLeg.name = side + 'LowerLeg';
-    lowerLeg.position.set(0, -UPPER_LEG_H, 0);
-    lowerLeg.castShadow = true;
-    upperLeg.add(lowerLeg);
-
-    const footGeo = shiftGeometry(new THREE.BoxGeometry(0.14, FOOT_H, 0.22), 0, -FOOT_H / 2, 0.05);
-    const foot = new THREE.Mesh(footGeo, footMat);
-    foot.name = side + 'Foot';
-    foot.position.set(0, -LOWER_LEG_H, 0);
-    foot.castShadow = true;
-    lowerLeg.add(foot);
-
-    return { upperLeg, lowerLeg, foot };
-  }
-
-  const leftLeg = buildLeg('left');
-  const rightLeg = buildLeg('right');
+  HIP_Y = W.landmarks.hip;
+  SHOULDER_Y = W.landmarks.shoulder;
+  HEAD_Y = W.landmarks.head;
+  TORSO_H = SHOULDER_Y - HIP_Y;
 
   /* ------------------------------------------------------- foot dust puff */
   const dustGeo = new THREE.BufferGeometry();
@@ -260,15 +83,18 @@ function makePlayer() {
     topOfHead: { x: 0, y: HEAD_Y + 0.4, z: 0 }
   };
 
-  // Pulsed when he takes a hit, instead of strobing his visibility on and off
-  playerGroup.userData.bodyMaterials = [skinMat, dhotiMat, hairMat, footMat];
+  // Pulsed when he takes a hit, instead of strobing his visibility on and off.
+  playerGroup.userData.bodyMaterials = W.flashMaterials;
 
+  // The animation's contract. Every entry is a BONE: the same .rotation and
+  // .position writes that drove the old rigid pivots now deform the skinned
+  // mesh smoothly through the shoulders, elbows, hips, knees and ankles.
   playerGroup.userData.parts = {
-    torso, head, hairBun, tilak, janeu, dhoti, dust,
-    leftUpperArm: leftArm.upperArm, leftLowerArm: leftArm.lowerArm,
-    rightUpperArm: rightArm.upperArm, rightLowerArm: rightArm.lowerArm,
-    leftUpperLeg: leftLeg.upperLeg, leftLowerLeg: leftLeg.lowerLeg, leftFoot: leftLeg.foot,
-    rightUpperLeg: rightLeg.upperLeg, rightLowerLeg: rightLeg.lowerLeg, rightFoot: rightLeg.foot
+    torso: W.bones.torso, head: W.bones.head, dust,
+    leftUpperArm: W.bones.upperArmL, leftLowerArm: W.bones.forearmL,
+    rightUpperArm: W.bones.upperArmR, rightLowerArm: W.bones.forearmR,
+    leftUpperLeg: W.bones.thighL, leftLowerLeg: W.bones.shinL, leftFoot: W.bones.footL,
+    rightUpperLeg: W.bones.thighR, rightLowerLeg: W.bones.shinR, rightFoot: W.bones.footR
   };
 
   return playerGroup;

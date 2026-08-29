@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Devotee preview</title>
+<script type="importmap">
+{
+  "imports": {
+    "three":         "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.min.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+  }
+}
+</script>
+<style>html,body{margin:0;background:#6a6a6a}canvas{display:block}</style>
+</head>
+<body>
+<script type="module">
+// Renders ONLY the player, big, on a neutral ground, from the angles that
+// matter. The in-scene screenshots were too small and too dark to art-direct
+// against - this is the loop that makes iterating on the surface possible.
+import * as THREE from 'three';
+import { makePlayer } from '../src/entities/Player.js';
+import { makeAsuraDemon } from '../src/entities/AsuraDemon.js';
+
+// ?who=asura previews the demon with the same harness.
+const WHO = new URLSearchParams(location.search).get('who') || 'player';
+
+const W = 520, H = 940;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x585858);
+
+const player = WHO === 'asura' ? makeAsuraDemon() : makePlayer();
+
+if (WHO !== 'asura') player.rotation.y = Math.PI; // the runner faces -Z; the demon faces +Z already
+scene.add(player);
+
+// Roughly the game's night rig, but bright enough to read form.
+scene.add(new THREE.AmbientLight(0xb9c6e0, 0.55));
+scene.add(new THREE.HemisphereLight(0x8fa8d8, 0x3a2c1f, 0.7));
+const moon = new THREE.DirectionalLight(0xcfe0ff, 1.5);
+moon.position.set(-4, 7, 3);
+scene.add(moon);
+const warm = new THREE.PointLight(0xffb46a, 18, 9, 2);
+warm.position.set(1.6, 1.4, 2.4);
+scene.add(warm);
+
+const camera = new THREE.PerspectiveCamera(26, W / H, 0.1, 60);
+
+function view(azimuthDeg, height = 1.05, dist = 4.6) {
+  const a = azimuthDeg * Math.PI / 180;
+  camera.position.set(Math.sin(a) * dist, height + 0.35, Math.cos(a) * -dist);
+  camera.lookAt(0, height, 0);
+  renderer.render(scene, camera);
+}
+
+let meshes = 0, tris = 0;
+player.traverse((o) => {
+  if (o.isMesh && o.geometry) {
+    meshes++;
+    const g = o.geometry;
+    tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
+  }
+});
+
+window.__previewPlayer = player;
+window.__preview = {
+  ready: true,
+  meshes,
+  triangles: Math.round(tris),
+  shot(az, h, d) { view(az, h, d); return renderer.domElement.toDataURL('image/png'); },
+};
+// A mid-stride pose, driven through the same parts the game animates -
+// this is the proof that the skinning deforms instead of hinging.
+window.__preview.pose = function () {
+  if (WHO === 'asura') {
+    const g = (n) => player.getObjectByName(n);
+    g('legL').rotation.x = 0.62;  g('legR').rotation.x = -0.55;
+    g('shinL').rotation.x = 0.55; g('shinR').rotation.x = 0.1;
+    g('armL').rotation.x = -0.6;  g('armR').rotation.x = 0.65;
+    g('forearmL').rotation.x = -0.9; g('forearmR').rotation.x = -1.0;
+    g('torso').rotation.x = 0.22; g('torso').rotation.y = 0.1;
+    return;
+  }
+  const q = player.userData.parts;
+  q.leftUpperLeg.rotation.x = 0.62;  q.rightUpperLeg.rotation.x = -0.55;
+  q.leftLowerLeg.rotation.x = 0.18;  q.rightLowerLeg.rotation.x = 0.85;
+  q.leftUpperArm.rotation.x = -0.55; q.rightUpperArm.rotation.x = 0.55;
+  q.leftLowerArm.rotation.x = -0.75; q.rightLowerArm.rotation.x = -0.6;
+  q.leftFoot.rotation.x = 0.22;      q.rightFoot.rotation.x = -0.28;
+  q.torso.rotation.x = 0.12;         q.torso.rotation.y = 0.08;
+  q.head.rotation.y = -0.06;
+};
+view(180);
+console.log('preview ready', meshes, 'meshes');
+</script>
+</body>
+</html>

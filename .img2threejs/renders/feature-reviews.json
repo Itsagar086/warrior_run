@@ -1,0 +1,10 @@
+[
+  {"id": "anatomy-proportion", "score": 0.90,
+   "notes": "Every landmark the sheet exposes is measured and hit exactly in the render: sole 0.000, dhoti hem 0.240 vs measured 0.244, knee 0.599, hip 1.050, waist sash 1.185-1.263, shoulder 1.734, chin 1.834, crown 2.100, bun top 2.178. Head-units 7.90, matching the sheet's own 8-head anatomy panel. diagnose_render scaleDelta 0.0045, aspectRatioDelta 0.0227, bilateralSymmetryError 0.0169. Held under 1.0 because hip and knee are cloth-occluded and placed from canon (0.500H, 0.285H), not measured."},
+  {"id": "pose-silhouette", "score": 0.72,
+   "notes": "Silhouette IoU 0.813 against a 0.85 threshold. Overall size and aspect match; the gap is form fidelity, not proportion. A 40-band width profile drove one measured widening pass (limb fill was x0.54-0.86 of reference) which took IoU 0.775 -> 0.813. A second attempt - closing the armpit by moving splay down the arm, and widening the dhoti into a fuller bell - was measured, made it worse (0.723), and was reverted. What remains needs muscle-mass and cloth-drape geometry, which are later passes, not blockout."},
+  {"id": "face-landmark-placement", "score": 0.60,
+   "notes": "Not this pass's gate (feature-placement). Landmarks are placed to measured skull ratios but stay massing-only; the reference resolves them only in the head-studies panel and the gameplay camera sits behind the runner."},
+  {"id": "outfit-and-palette", "score": 0.78,
+   "notes": "Not this pass's gate (material-pass). Palette is reference-derived and every material declares textureless with evidence, matching the flat cel finish the suitability step routed to. Identity systems all present: topknot with bead wrap, two rudraksha neck loops, armbands and wristbands on both limbs, tilak, waist sash, full-length dhoti with pleat and one-sided tail. One real analysis error was caught at review and fixed: the janeu was recorded as a thin cord and is in fact a broad chest sash, which the sheet labels."}
+]

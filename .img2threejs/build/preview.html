@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Devotee warrior — sculpt preview</title>
+<script type="importmap">
+{
+  "imports": {
+    "three":               "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+    "three/addons/":       "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/",
+    "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+  }
+}
+</script>
+<style>html,body{margin:0;height:100%;background:#6a6a6a}canvas{display:block}</style>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import {
+  createNagaLokaDevoteeWarriorModel as build,
+  createNagaLokaDevoteeWarriorLookDevLights as lights,
+  configureNagaLokaDevoteeWarriorRenderer as configure,
+} from './createObjectModel.js';
+
+const W = 720, H = 1000;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+try { configure(renderer); } catch (e) { console.warn('configure failed', e); }
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x6a6a6a);
+
+const model = build({});
+scene.add(model);
+
+try {
+  const rig = lights();
+  (Array.isArray(rig) ? rig : [rig]).forEach((l) => l && scene.add(l));
+} catch (e) {
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.0));
+}
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+// measured bounds, reported back so the render can be checked against the spec numbers
+const box = new THREE.Box3().setFromObject(model);
+const size = box.getSize(new THREE.Vector3());
+const centre = box.getCenter(new THREE.Vector3());
+
+const camera = new THREE.PerspectiveCamera(28, W / H, 0.1, 100);
+const radius = Math.max(size.x, size.y, size.z) * 2.05;
+
+// Shadows are on by default in the factory. Toggle them so a black surface can be attributed
+// to self-shadowing rather than guessed at.
+const shadowsOff = new URLSearchParams(location.search).get('shadows') === 'off';
+if (shadowsOff) model.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+scene.traverse((o) => { if (o.isLight && o.shadow) o.castShadow = !shadowsOff; });
+
+function view(azimuthDeg) {
+  const a = (azimuthDeg * Math.PI) / 180;
+  camera.position.set(centre.x + Math.sin(a) * radius, centre.y + size.y * 0.10, centre.z + Math.cos(a) * radius);
+  camera.lookAt(centre.x, centre.y, centre.z);
+  renderer.render(scene, camera);
+}
+
+let meshes = 0, tris = 0;
+model.traverse((o) => {
+  if (o.isMesh && o.geometry) {
+    meshes++;
+    const g = o.geometry;
+    tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
+  }
+});
+
+let lightCount = 0;
+scene.traverse((o) => { if (o.isLight) lightCount++; });
+const sampleMats = [];
+model.traverse((o) => {
+  if (o.isMesh && sampleMats.length < 8) {
+    const mt = Array.isArray(o.material) ? o.material[0] : o.material;
+    sampleMats.push({
+      name: o.name, visible: o.visible, type: mt?.type,
+      color: mt?.color ? '#' + mt.color.getHexString() : null,
+      metal: mt?.metalness, rough: mt?.roughness, opacity: mt?.opacity,
+      transparent: mt?.transparent,
+    });
+  }
+});
+
+// per-mesh world bounds, so placement is measured rather than eyeballed off a contact sheet
+const partBounds = {};
+model.updateWorldMatrix(true, true);
+model.traverse((o) => {
+  if (!o.isMesh || !o.geometry) return;
+  const b = new THREE.Box3().setFromObject(o);
+  const sz = b.getSize(new THREE.Vector3());
+  const ct = b.getCenter(new THREE.Vector3());
+  partBounds[o.name] = {
+    cx: +ct.x.toFixed(3), cy: +ct.y.toFixed(3), cz: +ct.z.toFixed(3),
+    w: +sz.x.toFixed(3), h: +sz.y.toFixed(3), d: +sz.z.toFixed(3),
+    y0: +b.min.y.toFixed(3), y1: +b.max.y.toFixed(3),
+  };
+});
+
+// pivot world positions + parent chain, so misplacement is attributable to a specific node
+const pivots = {};
+model.traverse((o) => {
+  if (!o.name.endsWith('__pivot')) return;
+  const w = new THREE.Vector3();
+  o.getWorldPosition(w);
+  const chain = [];
+  for (let p = o.parent; p; p = p.parent) chain.push(p.name.replace('__pivot', ''));
+  pivots[o.name.replace('__pivot', '')] = {
+    wx: +w.x.toFixed(3), wy: +w.y.toFixed(3), wz: +w.z.toFixed(3),
+    local: [+o.position.x.toFixed(3), +o.position.y.toFixed(3), +o.position.z.toFixed(3)],
+    parent: chain[0] ?? null,
+  };
+});
+
+window.__sculpt = {
+  ready: true,
+  meshes,
+  lightCount,
+  sampleMats,
+  partBounds,
+  pivots,
+  toneMapping: renderer.toneMapping,
+  exposure: renderer.toneMappingExposure,
+  triangles: Math.round(tris),
+  bounds: {
+    min: box.min.toArray().map((v) => +v.toFixed(4)),
+    max: box.max.toArray().map((v) => +v.toFixed(4)),
+    size: size.toArray().map((v) => +v.toFixed(4)),
+  },
+  nodeNames: Object.keys(model.userData.sculptRuntime?.nodes ?? {}),
+  shot(az) { view(az); return renderer.domElement.toDataURL('image/png'); },
+};
+view(0);
+console.log('sculpt ready', meshes, 'meshes', Math.round(tris), 'tris', window.__sculpt.bounds);
+</script>
+</body>
+</html>

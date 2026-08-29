@@ -1,0 +1,14 @@
+{
+  "admitted": true,
+  "reasons": [],
+  "provenance": {
+    "viewpoint": "sheet-multipanel",
+    "sourcePath": "D:\\GAMES\\warrior_run\\references\\player.png",
+    "width": 2808,
+    "height": 1536,
+    "foregroundCoverage": 0.826,
+    "largestComponentFraction": 0.9871,
+    "pHash": 12604638274664835268,
+    "duplicateOfHash": null
+  }
+}

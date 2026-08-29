@@ -236,14 +236,22 @@ window.__restartGame = function() {
 // ===== END SYSTEM =====
 
 // ===== SYSTEM id=system-render-loop label="Animation & Render Loop" =====
-// The simulation runs on a fixed step so collision can never be stepped over,
-// and catches up over at most MAX_CATCH_UP_STEPS frames. The old loop clamped
-// dt to a single 1/60 step, which meant a dropped frame advanced the world by
-// 16ms no matter how long the stall was - so any hitch read as the game
-// freezing and then resuming rather than simply stuttering.
-const FIXED_STEP = 1 / 60;
+// Every rendered frame advances the world by exactly its own duration, so the
+// motion is smooth at any refresh rate.
+//
+// This used to be a fixed 1/60 step fed by an accumulator. That is correct on a
+// 60Hz panel and badly wrong above it: on a 144Hz display only ~42% of rendered
+// frames moved the world at all, in an uneven 2-2-3 cadence, and the other 58%
+// were duplicates. The result reads as constant micro-stutter however fast the
+// GPU is - the machine renders 144 frames and the player sees 60 of them.
+//
+// The step is still bounded, because that bound is what stops a long frame
+// teleporting the devotee through a hazard. Anything longer than MAX_SUB_STEP
+// is split into equal pieces instead of being truncated, so a stall is caught
+// up rather than swallowed. At 22 u/s a 1/30 step moves the world 0.73 units,
+// against collision windows 1.6 units wide and up - no tunnelling.
+const MAX_SUB_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 4;
-let simAccumulator = 0;
 let lastFrameTime = performance.now();
 
 function animate() {
@@ -258,14 +266,15 @@ function animate() {
 
   // Discard time beyond the catch-up budget rather than spiralling after a
   // genuine stall (alt-tab, GC, a breakpoint).
-  const maxFrame = FIXED_STEP * MAX_CATCH_UP_STEPS;
+  const maxFrame = MAX_SUB_STEP * MAX_CATCH_UP_STEPS;
   if (frameTime > maxFrame) frameTime = maxFrame;
-  simAccumulator += frameTime;
+  if (!(frameTime > 0)) frameTime = MAX_SUB_STEP / 8;
 
-  let steps = 0;
-  while (simAccumulator >= FIXED_STEP && steps < MAX_CATCH_UP_STEPS) {
-    const dt = FIXED_STEP;
+  // One step per frame in the normal case; only a long frame is subdivided
+  const steps = Math.max(1, Math.ceil(frameTime / MAX_SUB_STEP));
+  const dt = frameTime / steps;
 
+  for (let i = 0; i < steps; i++) {
     // Update simulation when active
     if (state.phase === 'playing') {
       updateSimulation(dt);
@@ -274,9 +283,6 @@ function animate() {
     // Always update particle effects and the torch flicker
     updateFX(dt);
     updateLighting(dt);
-
-    simAccumulator -= FIXED_STEP;
-    steps++;
   }
 
   // Park the warm lights on whichever flames are nearest this frame

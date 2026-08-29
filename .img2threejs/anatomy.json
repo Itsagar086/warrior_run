@@ -1,0 +1,201 @@
+{
+  "sourceImage": "D:\\GAMES\\warrior_run\\references\\player.png",
+  "overlayImage": "D:\\GAMES\\warrior_run\\.img2threejs\\landmarks.png",
+  "measurementBasis": {
+    "note": "Landmarks are MEASURED, not eyeballed: a per-row foreground profile of the front turnaround figure (x 180..360) against the flat panel grey (106,106,106), read at 1px. Panel chrome at y<=185 and the 'Front' caption at y 704..724 are excluded. All y values are ORIGINAL sheet pixels.",
+    "subject": "front figure of the 360 TURNAROUND panel",
+    "landmarksPx": {
+      "bunTop": 186,
+      "skullCrown": 204,
+      "hairline": 218,
+      "eyeLine": 236,
+      "mouthLine": 254,
+      "chin": 265,
+      "shoulderLine": 288,
+      "waistSashTop": 405,
+      "dhotiHem": 630,
+      "ankle": 660,
+      "sole": 686
+    },
+    "derived": {
+      "headHeightPx": 61,
+      "totalHeightPx": 482,
+      "headUnitsTotal": 7.9,
+      "sensitivity": "Crown and chin each carry about +/-2px, so the ratio is 7.9 +/-0.3.",
+      "correctionHistory": "Two earlier passes recorded 6.45 then 6.83 head-units. Both were wrong. They were read by eye off downscaled zone crops and mistook the topknot for the skull crown while placing the chin too high, which shrank the head and inflated the ratio's denominator. Measured from pixels the figure is 7.9 HU - which agrees with the sheet's own anatomy panel drawing an 8-head canon, and with the humanoid template's independent 7.77. The template was right; the hand measurement was not."
+    },
+    "landmarkEvidence": {
+      "bunTop": "first foreground row, width 9px and centred on x=258 - the topknot, not the skull",
+      "skullCrown": "row where the outline stops being bun-narrow and climbs to head width (w 30->52 across y 202..217)",
+      "hairline": "first row where skin pixels appear inside the hair mass",
+      "chin": "local minimum of the silhouette width (w=40 at y=265..266) where the jaw closes before the neck flares into the trapezius",
+      "shoulderLine": "row where width jumps as the arms separate from the torso (w 90->123 across y 285..288)",
+      "waistSashTop": "first row classified as saffron cloth",
+      "dhotiHem": "last row with a continuous cloth band; bare leg below",
+      "sole": "last foreground row of the figure, above the caption gap at y 688..700"
+    }
+  },
+  "anatomy": {
+    "styleHeads": 7.9,
+    "styleClass": "realistic-heroic",
+    "styleClassRationale": "7.9 HU sits in the realistic band (7.5-8) rather than the stylized 5-6 band. The sheet's anatomy panel draws an 8-head canon and the rendered turnaround measures 7.9, so the two agree.",
+    "proportions": {
+      "headUnit": 0.0397,
+      "torso": 3.3,
+      "legs": 4.61,
+      "shoulderWidth": 1.89,
+      "hipWidth": 1.39
+    },
+    "proportionEvidence": {
+      "headUnit": "crown y=204 to chin y=265 = 61px, over sheet height 1536",
+      "torso": "crown 204 to sash 405 = 201px / 61",
+      "legs": "sash 405 to sole 686 = 281px / 61",
+      "shoulderWidth": "torso span x=205..310 at y=286, before the arms separate = 115px / 61",
+      "hipWidth": "body hip under the cloth, inferred - the garment silhouette is wider and is garment, not anatomy. Lowest-confidence number here."
+    },
+    "pose": {
+      "type": "A-pose rest (turnaround); hero panel shows a mid-stride run",
+      "restPoseNote": "The rig is authored in the A-pose the turnaround defines. The run/jump/slide poses are driven procedurally at runtime, not baked.",
+      "jointAngles": {
+        "neck": [
+          0,
+          0,
+          0
+        ],
+        "leftShoulder": [
+          0,
+          0,
+          42
+        ],
+        "rightShoulder": [
+          0,
+          0,
+          -42
+        ],
+        "leftElbow": [
+          0,
+          0,
+          4
+        ],
+        "rightElbow": [
+          0,
+          0,
+          -4
+        ],
+        "leftWrist": [
+          0,
+          0,
+          0
+        ],
+        "rightWrist": [
+          0,
+          0,
+          0
+        ],
+        "leftHip": [
+          0,
+          0,
+          3
+        ],
+        "rightHip": [
+          0,
+          0,
+          -3
+        ],
+        "leftKnee": [
+          0,
+          0,
+          0
+        ],
+        "rightKnee": [
+          0,
+          0,
+          0
+        ],
+        "leftAnkle": [
+          0,
+          0,
+          0
+        ],
+        "rightAnkle": [
+          0,
+          0,
+          0
+        ]
+      },
+      "jointAngleEvidence": "MEASURED, replacing an earlier eyeball estimate of 38 deg. The left outer arm edge of the front turnaround runs x=181 at y=300 to x=70 at y=400; the shoulder-joint-to-wrist axis is atan(118/122) = 44 deg from vertical, and the outer silhouette edge reads 48 deg. The arm is close to straight, so 42 deg at the shoulder plus 4 deg at the elbow reproduces it. Units here are DEGREES; the spec stores radians.",
+      "confidence": 0.8
+    },
+    "faceLandmarks": {
+      "hairline": 0.23,
+      "eyeLine": 0.52,
+      "mouthLine": 0.82,
+      "eyeSpacing": 0.36,
+      "noseBase": 0.72,
+      "earTop": 0.5,
+      "earBottom": 0.78
+    },
+    "faceLandmarkNote": "Normalized within the skull bbox (y 204..265). eyeLine/mouthLine are read from the rows where facial features break the skin classification; eyeSpacing, noseBase and the ear pair are NOT resolvable on the turnaround at this scale and are carried from the head-studies panel by eye. Face detail drives head massing only - the gameplay camera sits behind the runner.",
+    "features": [
+      {
+        "id": "topknot-bun",
+        "note": "spherical bun above and behind the crown, rudraksha wrapped at its base",
+        "evidenceRef": "zone-r0c0.png bunTop y=172; head-studies panel 'Rudraksha detail'"
+      },
+      {
+        "id": "rudraksha-necklace",
+        "note": "bead loop at the throat",
+        "evidenceRef": "zone-r0c0.png y=285..320"
+      },
+      {
+        "id": "rudraksha-armband",
+        "note": "bead band around BOTH upper arms mid-shaft",
+        "evidenceRef": "zone-r0c0.png y=325..345, labelled 'Rudraksha'"
+      },
+      {
+        "id": "rudraksha-wristband",
+        "note": "bead band on both distal forearms",
+        "evidenceRef": "zone-r1c0.png hands at top edge"
+      },
+      {
+        "id": "janeu-sash",
+        "note": "single cream cord, left shoulder to right hip, crossing front AND back",
+        "evidenceRef": "front and back turnaround; labelled 'Single sash'"
+      },
+      {
+        "id": "forehead-tilak",
+        "note": "short vertical red mark between the brows",
+        "evidenceRef": "head-studies panel"
+      },
+      {
+        "id": "dhoti-full-length",
+        "note": "CORRECTION vs prior build: the dhoti is a full-length kachcha wrap reaching the ankle as two draped leg columns, not a mid-thigh skirt. Only ankles and feet are bare below it.",
+        "evidenceRef": "zone-r1c0.png hem y=634 vs sole y=682"
+      },
+      {
+        "id": "bare-feet",
+        "note": "no footwear",
+        "evidenceRef": "zone-r1c0.png"
+      }
+    ],
+    "confidence": 0.85,
+    "unmeasurable": [
+      {
+        "id": "hipJoint",
+        "reason": "occluded by the dhoti in every view",
+        "resolution": "placed at 0.50 of standing height, the standard figure ratio"
+      },
+      {
+        "id": "kneeJoint",
+        "reason": "occluded by the dhoti in the turnaround",
+        "resolution": "placed at 0.285 of standing height"
+      },
+      {
+        "id": "elbow/wrist",
+        "reason": "not separable from the arm silhouette at 1:1",
+        "resolution": "segment lengths carried from the humanoid template canon, rescaled"
+      }
+    ]
+  },
+  "confidenceRationale": "Raised to 0.85: front, back and side are all supplied, and the landmark set is now measured from a pixel profile rather than estimated by eye, with the ratio independently corroborated by the sheet's own 8-head anatomy panel. Held below 0.95 because the hip and knee are occluded by cloth and are placed from canon, not measurement."
+}

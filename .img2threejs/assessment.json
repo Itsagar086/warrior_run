@@ -1,0 +1,831 @@
+{
+  "targetName": "Naga Loka Devotee Warrior",
+  "sourceImage": "d:/GAMES/warrior_run/references/player.png",
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "humanoid character - adult male Hindu devotee warrior, bare-chested in a wrapped saffron dhoti",
+      "primaryDomain": "character",
+      "formLanguage": [
+        "organic",
+        "character-like",
+        "fabric-like"
+      ],
+      "structureKind": [
+        "articulated assembly",
+        "branching hierarchy",
+        "layered shell"
+      ],
+      "motionPotential": [
+        "articulated",
+        "whole-object transform"
+      ],
+      "materialFamilies": [
+        "skin-like",
+        "cloth",
+        "mixed"
+      ],
+      "notes": "Classified from the 360 turnaround, not from the character's name. Body is organic and articulated; the dhoti is a separate fabric-like layered shell over the pelvis and thighs; rudraksha beads are a repeated hard module. Motion requirement is articulation only - the figure runs, jumps and slides, it is never destructed or detached."
+    },
+    "complexity": {
+      "tier": "complex",
+      "scores": {
+        "silhouetteComplexity": 2,
+        "componentCount": 2,
+        "hierarchyDepth": 3,
+        "repetitionDensity": 2,
+        "materialLayerCount": 2,
+        "localDetailDensity": 2,
+        "occlusionRisk": 1,
+        "actionReadinessNeed": 3
+      },
+      "estimatedCounts": {
+        "macroComponents": 7,
+        "mesoComponents": 18,
+        "microFeatureGroups": 8,
+        "materialLayers": 6,
+        "repetitionSystems": 2
+      },
+      "reasoning": [
+        "silhouette 2: a clean readable humanoid outline, interrupted only by the hair bun and the dhoti drape.",
+        "componentCount 2: seven macro parts resolving to ~18 meso sub-parts; not a mechanical assembly.",
+        "hierarchyDepth 3: the rig needs root->hip->thigh->shin->foot and torso->arm->forearm->hand, four levels deep.",
+        "repetitionDensity 2: two bead-ring systems (necklace, four limb bands) plus the dhoti's fold ridges.",
+        "materialLayerCount 2: skin, hair, dhoti cloth, sash cord, bead, foot - six distinct surfaces.",
+        "localDetailDensity 2: identity rides on small marks (tilak, bead wrap on the bun, hem border).",
+        "occlusionRisk 1: unusually low - front, back AND side are all supplied. Only the hip joint under cloth, the sole and the bun underside are unobserved.",
+        "actionReadinessNeed 3: the whole point is a run/jump/slide rig, so every limb pivot is load-bearing."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "complex",
+      "minimumComponentLevels": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "complex, not moderate: the model is worthless without a four-level articulated hierarchy, and identity rests on repeated bead systems plus small marks that must be enumerated rather than described in prose. Not ultra-complex: there is no dense microstructure - the finish is flat cel colour with no wear, pattern or grain to reproduce."
+    },
+    "unknownsToResolveBeforeImplementation": [
+      "Dhoti hem length is inconsistent between the turnaround (just above the ankle) and the hero run (rides higher on the lifted leg). Modelled at the turnaround length; the run pose is procedural so the hem cannot follow the leg.",
+      "Hip joint centre is occluded by cloth in every view; its height is inferred from where the leg columns diverge.",
+      "Sole of the foot and the underside of the bun are not observed in any panel.",
+      "The anatomy panel's printed labels are garbled ('Flioiny', '=3\"', '2.5 cm') and are unusable as numeric corroboration for the measured 6.45 HU.",
+      "Style tier is NOT confirmed by the user: the reference measures 6.45 HU, the character currently in the game is 3.6 HU, and an earlier re-proportioning was reverted. This model is authored standalone; adopting it in-game is a separate decision."
+    ],
+    "detailInventory": {
+      "scanMethod": "grid-4x4 plus named panel zones",
+      "targetMinDetails": 10,
+      "note": "Enumerate every identity-defining small detail before authoring the spec. Each detail must map to a component.localFeatures entry or material.localOverrides entry, never prose only. Use forge/stage1_intake/build_detail_inventory.py to scan zones.",
+      "details": [
+        {
+          "id": "topknot-bun",
+          "kind": "form",
+          "description": "Spherical hair bun seated above and behind the crown; the tallest point of the silhouette.",
+          "region": {
+            "x": 0.02,
+            "y": 0.1,
+            "width": 0.1,
+            "height": 0.06,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "head.hairBun"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r0c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "bun-rudraksha-wrap",
+          "kind": "trim",
+          "description": "A ring of rudraksha beads wound around the base of the bun, called out explicitly as 'Rudraksha detail'.",
+          "region": {
+            "x": 0.72,
+            "y": 0.08,
+            "width": 0.08,
+            "height": 0.08,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "head.bunWrap"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (DETAILED HEAD STUDIES panel)",
+          "confidence": 0.85
+        },
+        {
+          "id": "rudraksha-necklace",
+          "kind": "trim",
+          "description": "Bead loop sitting on the collarbones at the base of the throat.",
+          "region": {
+            "x": 0.07,
+            "y": 0.18,
+            "width": 0.06,
+            "height": 0.03,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "torso.necklace"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r0c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "rudraksha-armband-l",
+          "kind": "trim",
+          "description": "Bead band around the LEFT upper arm at mid-shaft; the panel's 'Rudraksha' callout points at it.",
+          "region": {
+            "x": 0.06,
+            "y": 0.21,
+            "width": 0.03,
+            "height": 0.02,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "armL.upperBand"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r0c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "rudraksha-armband-r",
+          "kind": "trim",
+          "description": "Bead band around the RIGHT upper arm, mirroring the left.",
+          "region": {
+            "x": 0.1,
+            "y": 0.21,
+            "width": 0.03,
+            "height": 0.02,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "armR.upperBand"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r0c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "rudraksha-wristband-l",
+          "kind": "trim",
+          "description": "Bead band on the left distal forearm.",
+          "region": {
+            "x": 0.03,
+            "y": 0.25,
+            "width": 0.03,
+            "height": 0.02,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "armL.wristBand"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r1c0.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "rudraksha-wristband-r",
+          "kind": "trim",
+          "description": "Bead band on the right distal forearm.",
+          "region": {
+            "x": 0.13,
+            "y": 0.25,
+            "width": 0.03,
+            "height": 0.02,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "armR.wristBand"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r1c0.png",
+          "confidence": 0.8
+        },
+        {
+          "id": "janeu-sash",
+          "kind": "trim",
+          "description": "Single cream cord from one shoulder to the opposite hip, crossing BOTH the chest and the back. Labelled 'Single sash'.",
+          "region": {
+            "x": 0.11,
+            "y": 0.4,
+            "width": 0.1,
+            "height": 0.1,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "torso.janeu"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (ACCESSORY & TEXTURE BREAKDOWN panel)",
+          "confidence": 0.95
+        },
+        {
+          "id": "forehead-tilak",
+          "kind": "marking",
+          "description": "Short vertical red mark between the brows.",
+          "region": {
+            "x": 0.74,
+            "y": 0.2,
+            "width": 0.02,
+            "height": 0.02,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "material.localOverrides",
+            "ref": "skin.tilak"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (DETAILED HEAD STUDIES panel)",
+          "confidence": 0.85
+        },
+        {
+          "id": "waist-sash-band",
+          "kind": "form",
+          "description": "A single wound sash closing the dhoti at the waist, sitting proud of the wrap.",
+          "region": {
+            "x": 0.06,
+            "y": 0.27,
+            "width": 0.08,
+            "height": 0.03,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "dhoti.waistSash"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r1c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "dhoti-front-pleat",
+          "kind": "form",
+          "description": "Vertical pleat panel hanging down the front centre of the wrap.",
+          "region": {
+            "x": 0.26,
+            "y": 0.4,
+            "width": 0.08,
+            "height": 0.2,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "dhoti.frontPleat"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (DHOTI DRAPING GUIDE panel)",
+          "confidence": 0.85
+        },
+        {
+          "id": "dhoti-leg-columns",
+          "kind": "form",
+          "description": "The wrap splits into two draped columns that sheathe the thighs and calves and end just above the ankle - a kachcha dhoti, NOT a short skirt.",
+          "region": {
+            "x": 0.05,
+            "y": 0.28,
+            "width": 0.12,
+            "height": 0.2,
+            "units": "normalized"
+          },
+          "scale": "macro",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "dhoti.legDrape"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r1c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "dhoti-hem-border",
+          "kind": "marking",
+          "description": "Fine gold embroidered border along the hem. Below geometry scale - carried as a material band, not modelled.",
+          "region": {
+            "x": 0.03,
+            "y": 0.78,
+            "width": 0.2,
+            "height": 0.08,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "material.localOverrides",
+            "ref": "dhotiCloth.hemBorder"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (ACCESSORY & TEXTURE BREAKDOWN panel)",
+          "confidence": 0.7
+        },
+        {
+          "id": "spine-channel",
+          "kind": "form",
+          "description": "Recessed groove down the centre of the back separating the erector masses.",
+          "region": {
+            "x": 0.2,
+            "y": 0.14,
+            "width": 0.04,
+            "height": 0.16,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "shading",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "torso.spineChannel"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (back turnaround)",
+          "confidence": 0.8
+        },
+        {
+          "id": "lat-taper",
+          "kind": "form",
+          "description": "Latissimus masses sweeping from the armpits to a waist ~0.62 of the shoulder span - the V that defines the back read.",
+          "region": {
+            "x": 0.17,
+            "y": 0.14,
+            "width": 0.1,
+            "height": 0.14,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "torso.lats"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (back turnaround)",
+          "confidence": 0.85
+        },
+        {
+          "id": "bare-feet",
+          "kind": "form",
+          "description": "No footwear; toes visible, ankle bare below the dhoti hem.",
+          "region": {
+            "x": 0.06,
+            "y": 0.44,
+            "width": 0.08,
+            "height": 0.03,
+            "units": "normalized"
+          },
+          "scale": "meso",
+          "affects": "identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "legs.feet"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\.img2threejs\\zones\\zone-r1c0.png",
+          "confidence": 0.9
+        },
+        {
+          "id": "ear-pair",
+          "kind": "form",
+          "description": "Ears standing proud of the skull, visible because the hair is pulled back into the bun.",
+          "region": {
+            "x": 0.76,
+            "y": 0.19,
+            "width": 0.06,
+            "height": 0.04,
+            "units": "normalized"
+          },
+          "scale": "micro",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "head.ears"
+          },
+          "evidenceRef": "D:\\GAMES\\warrior_run\\references\\player.png (DETAILED HEAD STUDIES panel)",
+          "confidence": 0.85
+        }
+      ]
+    },
+    "anatomy": {
+      "applies": true,
+      "styleHeads": 7.9,
+      "proportions": {
+        "headUnit": 0.0397,
+        "torso": 3.3,
+        "legs": 4.61,
+        "shoulderWidth": 1.89,
+        "hipWidth": 1.39
+      },
+      "pose": {
+        "type": "A-pose rest (turnaround); hero panel shows a mid-stride run",
+        "restPoseNote": "The rig is authored in the A-pose the turnaround defines. The run/jump/slide poses are driven procedurally at runtime, not baked.",
+        "jointAngles": {
+          "neck": [
+            0,
+            0,
+            0
+          ],
+          "leftShoulder": [
+            0,
+            0,
+            38
+          ],
+          "rightShoulder": [
+            0,
+            0,
+            -38
+          ],
+          "leftElbow": [
+            0,
+            0,
+            6
+          ],
+          "rightElbow": [
+            0,
+            0,
+            -6
+          ],
+          "leftWrist": [
+            0,
+            0,
+            0
+          ],
+          "rightWrist": [
+            0,
+            0,
+            0
+          ],
+          "leftHip": [
+            0,
+            0,
+            3
+          ],
+          "rightHip": [
+            0,
+            0,
+            -3
+          ],
+          "leftKnee": [
+            0,
+            0,
+            0
+          ],
+          "rightKnee": [
+            0,
+            0,
+            0
+          ],
+          "leftAnkle": [
+            0,
+            0,
+            0
+          ],
+          "rightAnkle": [
+            0,
+            0,
+            0
+          ]
+        },
+        "jointAngleEvidence": "Arm abduction read off the front turnaround: upper arms hang ~38 deg from vertical, forearms near-straight. Legs are close to vertical with a slight outward splay. Wrists/ankles are not clearly readable at this scale, so they stay at rest rather than being invented.",
+        "confidence": 0.7
+      },
+      "faceLandmarks": {
+        "hairline": 0.23,
+        "eyeLine": 0.52,
+        "mouthLine": 0.82,
+        "eyeSpacing": 0.36,
+        "noseBase": 0.72,
+        "earTop": 0.5,
+        "earBottom": 0.78
+      },
+      "features": [
+        {
+          "id": "topknot-bun",
+          "note": "spherical bun above and behind the crown, rudraksha wrapped at its base",
+          "evidenceRef": "zone-r0c0.png bunTop y=172; head-studies panel 'Rudraksha detail'"
+        },
+        {
+          "id": "rudraksha-necklace",
+          "note": "bead loop at the throat",
+          "evidenceRef": "zone-r0c0.png y=285..320"
+        },
+        {
+          "id": "rudraksha-armband",
+          "note": "bead band around BOTH upper arms mid-shaft",
+          "evidenceRef": "zone-r0c0.png y=325..345, labelled 'Rudraksha'"
+        },
+        {
+          "id": "rudraksha-wristband",
+          "note": "bead band on both distal forearms",
+          "evidenceRef": "zone-r1c0.png hands at top edge"
+        },
+        {
+          "id": "janeu-sash",
+          "note": "single cream cord, left shoulder to right hip, crossing front AND back",
+          "evidenceRef": "front and back turnaround; labelled 'Single sash'"
+        },
+        {
+          "id": "forehead-tilak",
+          "note": "short vertical red mark between the brows",
+          "evidenceRef": "head-studies panel"
+        },
+        {
+          "id": "dhoti-full-length",
+          "note": "CORRECTION vs prior build: the dhoti is a full-length kachcha wrap reaching the ankle as two draped leg columns, not a mid-thigh skirt. Only ankles and feet are bare below it.",
+          "evidenceRef": "zone-r1c0.png hem y=634 vs sole y=682"
+        },
+        {
+          "id": "bare-feet",
+          "note": "no footwear",
+          "evidenceRef": "zone-r1c0.png"
+        }
+      ],
+      "confidence": 0.78,
+      "note": "Measured off 1:1 zone crops, not the whole-sheet overlay (whose head-unit ticks span the multi-panel sheet and do not align with the figure). 6.45 HU is measured, not snapped to a preset band. Full measurement basis and evidence refs in .img2threejs/anatomy.json."
+    },
+    "sourceImage": "d:/GAMES/warrior_run/references/player.png",
+    "pipelineRouting": {
+      "version": 1,
+      "track": "character-v1.5",
+      "source": "explicit",
+      "status": "resolved",
+      "classification": {
+        "kind": "character",
+        "confidence": 1.0,
+        "evidenceRefs": [
+          "pipeline-routing:explicit:character-v1.5"
+        ],
+        "provider": "pipeline-routing-cli",
+        "version": "1"
+      },
+      "conflicts": []
+    }
+  },
+  "qualityContract": {
+    "qualityBar": "complex",
+    "definitionOfDone": [
+      "Standing silhouette matches the turnaround at 6.45 head-units with the hip at half standing height, shoulders ~1.56 HU across and the waist ~0.62 of the shoulder span.",
+      "The dhoti reads as a full-length wrapped kachcha reaching the ankle in two draped columns, with a waist sash and a front pleat - not as a short skirt and not as a box.",
+      "All five rudraksha placements are present: throat, both upper arms, both wrists, plus the wrap at the bun base.",
+      "The janeu crosses shoulder-to-opposite-hip and is visible from BOTH front and back, since the game camera sees the back.",
+      "Every named pivot (legL, legR, shinL, shinR, armL, armR, torso, head) rotates about a real joint position, not a mesh centre.",
+      "Skin, hair, cloth, cord and bead each read as distinct surfaces under the game's moonlit rig without any baked highlight in their albedo."
+    ],
+    "minimumSpecDepth": {
+      "macroComponents": 7,
+      "mesoComponents": 16,
+      "microFeatureGroups": 6,
+      "materialLayers": 6,
+      "repetitionSystems": 2,
+      "reviewViewpoints": 4
+    },
+    "featureGroups": [
+      {
+        "id": "proportion-lock",
+        "name": "Measured proportion lock",
+        "required": true,
+        "qualityCriteria": [
+          "Total height / head height = 6.45 +/- 0.25 HU.",
+          "Hip joint sits at 0.50 +/- 0.03 of standing height.",
+          "Shoulder span 1.56 +/- 0.15 HU; waist 0.60-0.66 of the shoulder span."
+        ],
+        "evidenceRefs": [
+          "zone-r0c0.png",
+          "zone-r1c0.png",
+          "anatomy.json"
+        ],
+        "failureModes": [
+          "head scaled to a doll-like fraction of body height (the defect in the current in-game build at 3.6 HU)",
+          "legs shorter than half the standing height, which reads as stocky rather than athletic"
+        ]
+      },
+      {
+        "id": "back-read",
+        "name": "Back silhouette and surface",
+        "required": true,
+        "qualityCriteria": [
+          "Lat masses taper from armpit to waist producing a visible V.",
+          "A spine channel separates the two erector masses.",
+          "The janeu is visible crossing the bare back."
+        ],
+        "evidenceRefs": [
+          "back turnaround panel"
+        ],
+        "failureModes": [
+          "flat slab back - the game camera looks straight at it, so this is the single most visible surface",
+          "janeu sunk inside the torso volume and invisible"
+        ]
+      },
+      {
+        "id": "dhoti-drape",
+        "name": "Dhoti as a wrapped garment",
+        "required": true,
+        "qualityCriteria": [
+          "Two draped leg columns reaching just above the ankle.",
+          "A waist sash sits proud of the wrap.",
+          "A front pleat panel hangs down the centre.",
+          "Fold ridges break the surface; no flat untextured panel."
+        ],
+        "evidenceRefs": [
+          "DHOTI DRAPING GUIDE panel",
+          "zone-r1c0.png"
+        ],
+        "failureModes": [
+          "a box or a short skirt instead of a full-length wrap",
+          "hem cutting at mid-thigh, exposing the whole leg"
+        ]
+      },
+      {
+        "id": "rudraksha-system",
+        "name": "Rudraksha repetition system",
+        "required": true,
+        "qualityCriteria": [
+          "Bead rings at throat, both upper arms, both wrists and the bun base.",
+          "Individual beads read as discrete furrowed seeds, not a smooth torus."
+        ],
+        "evidenceRefs": [
+          "ACCESSORY & TEXTURE BREAKDOWN panel",
+          "zone-r0c0.png"
+        ],
+        "failureModes": [
+          "a smooth ring standing in for a bead string",
+          "armbands omitted - they are explicitly labelled in the reference"
+        ]
+      },
+      {
+        "id": "action-rig",
+        "name": "Animation-ready pivots",
+        "required": true,
+        "qualityCriteria": [
+          "legL/legR pivot at the hip, shinL/shinR at the knee, armL/armR at the shoulder, torso at the waist, head at the neck.",
+          "Limb geometry is offset so rotation swings the limb, never spins it about its middle."
+        ],
+        "evidenceRefs": [
+          "anatomy.json pose block"
+        ],
+        "failureModes": [
+          "a pivot placed at a mesh centroid, which makes a run look like clockwork",
+          "a limb that cannot reach the run/jump/slide poses without interpenetration"
+        ]
+      }
+    ],
+    "visualDeltaChecks": [
+      "silhouette and negative-space delta",
+      "component hierarchy depth delta",
+      "repetition density and distribution delta",
+      "material albedo/roughness/normal response delta",
+      "local feature placement and scale delta"
+    ],
+    "antiShallowSpecRules": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md)."
+    ],
+    "reviewViewpoints": [
+      "front",
+      "back",
+      "side",
+      "three-quarter-rear"
+    ],
+    "blockingFailureModes": [
+      "any proportion outside the proportion-lock tolerances",
+      "missing janeu on the back",
+      "dhoti modelled as a box or ending above the knee",
+      "any named pivot rotating about a mesh centre"
+    ]
+  },
+  "authoringInstruction": "Fill observed object class, complexity reasoning, featureGroups, visualDeltaChecks, and unknowns before generating or implementing ObjectSculptSpec.",
+  "pipelineRouting": {
+    "version": 1,
+    "track": "character-v1.5",
+    "source": "explicit",
+    "status": "resolved",
+    "classification": {
+      "kind": "character",
+      "confidence": 1.0,
+      "evidenceRefs": [
+        "pipeline-routing:explicit:character-v1.5"
+      ],
+      "provider": "pipeline-routing-cli",
+      "version": "1"
+    },
+    "conflicts": []
+  },
+  "localSpecSearch": {
+    "collection": "core_3d",
+    "query": "Naga Loka Devotee Warrior humanoid head units proportions cloth wrap drape fold panel skin albedo roughness dielectric bead torus repetition ring articulated pivot socket rig",
+    "index": {
+      "status": "hit",
+      "reason": "current",
+      "fingerprint": "ac4f0bc9028e34083dbb5d5531ae3df7699c8e7641d5f8e6d42e7492ea1be1d0"
+    },
+    "matches": [
+      {
+        "record_id": "core.socket-pivot",
+        "file_path": "grimoire/glossary/3d_vocabulary.md",
+        "heading": "Animation, Physics, And Destruction",
+        "key_path": null,
+        "score": 11.719725006769,
+        "snippets": [
+          "A pivot is a local rotation origin; a socket is an attachment point for a child part. In a runtime hierarchy, a socket Object3D is a child of the relevant pivot."
+        ],
+        "source_refs": [
+          {
+            "path": "grimoire/glossary/3d_vocabulary.md",
+            "heading": "Animation, Physics, And Destruction",
+            "key_path": null
+          },
+          {
+            "path": "grimoire/readiness/action_rigging.md",
+            "heading": "Hierarchy Pattern",
+            "key_path": null
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "grimoire/readiness/action_rigging.md"
+          },
+          {
+            "kind": "notebooklm-research",
+            "ref": "notebooklm:4b03c2f9-8393-411f-b5b4-039ab9532843",
+            "note": "Validated generic schema vocabulary; numeric claims remain backed by local source_refs."
+          }
+        ]
+      },
+      {
+        "record_id": "core.description-pbr-vocabulary-caption-calibration",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.description_conventions[7]",
+        "score": 8.970277883317,
+        "snippets": [
+          "Embedding a technical material-attribute block (Albedo, Metalness, Roughness, Normals) with measured reflectance ranges directly into the structured description, not just prose. Nhúng một khối thuộc tính vật liệu kỹ thuật (Albedo, Metalness, ..."
+        ],
+        "source_refs": [
+          {
+            "path": "docs/raw/img2threejs-skill-dataset.json",
+            "heading": null,
+            "key_path": "categories.description_conventions[7]"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "docs/raw/img2threejs-skill-dataset.json",
+            "note": "img2threejs NotebookLM research distillation"
+          }
+        ]
+      },
+      {
+        "record_id": "core.pbr-color-space-srgb-vs-linearnocolorspace",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.material_pbr[11]",
+        "score": 6.615447681944,
+        "snippets": [
+          "... (cần gamma/sRGB) và các bản đồ dữ liệu toán học (phải giữ tuyến tính/không hiệu chỉnh). Recognition cues: Base color/albedo and emissive textures are the only ones that should look like natural photographic color; Normal, roughness, ..."
+        ],
+        "source_refs": [
+          {
+            "path": "docs/raw/img2threejs-skill-dataset.json",
+            "heading": null,
+            "key_path": "categories.material_pbr[11]"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "docs/raw/img2threejs-skill-dataset.json",
+            "note": "img2threejs NotebookLM research distillation"
+          }
+        ]
+      }
+    ]
+  }
+}
