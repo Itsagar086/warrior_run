@@ -46,7 +46,7 @@ function makeMountKailash() {
     roughness: 0.35, metalness: 0.5, fog: false
   });
   const flagMat = new THREE.MeshBasicMaterial({
-    color: 0xff4400, side: THREE.DoubleSide, fog: false
+    color: 0xff3300, side: THREE.DoubleSide, fog: false
   });
   const darkVoid = new THREE.MeshStandardMaterial({
     color: 0x2a1a10, roughness: 1.0, fog: false
@@ -247,40 +247,49 @@ function makeMountKailash() {
   const kalasha = new THREE.Mesh(new THREE.SphereGeometry(4, 10, 8), goldMat);
   kalasha.position.set(0, shikTop + 8, 0);
   mandir.add(kalasha);
-  // Gold spike / pole
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 28, 6), goldMat);
-  pole.position.set(0, shikTop + 22, 0);
+  // Tall gold flagpole rising from the kalasha, thick enough to read at
+  // horizon distance. It stays OUTSIDE the flag group (and so gets merged):
+  // a pole does not flap, only the cloth does.
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 45, 8), goldMat);
+  pole.position.set(0, shikTop + 30.5, 0);
   mandir.add(pole);
 
   // ── RED DHWAJA (saffron flag, waving in the wind) ────────
-  // The flag is NOT merged so it can animate (wave) at runtime
+  // Nothing in this group is merged, so the cloth can animate at runtime.
+  // Scaled up 3x: at ~520 units out a 26-unit flag is a few pixels of nothing.
+  const FLAG_S = 3;
   const flagGroup = new THREE.Group();
-  flagGroup.position.set(0.8, shikTop + 33, 0);
+  flagGroup.position.set(2.5, shikTop + 44, 0);
+  flagGroup.rotation.y = -0.4;          // 3/4 turn toward the camera down -Z
   flagGroup.userData.noMerge = true;
-  // Wavy flag shape — wider, looks like it's blowing in the wind
+
+  // Wavy flag shape — the curved edges read as cloth caught in the wind
   const flagShape = new THREE.Shape();
   flagShape.moveTo(0, 0);
-  flagShape.quadraticCurveTo(8, 5, 16, 3);
-  flagShape.quadraticCurveTo(22, 1, 26, 4);
-  flagShape.lineTo(25, -2);
-  flagShape.quadraticCurveTo(18, -4, 12, -1);
-  flagShape.quadraticCurveTo(6, 1, 0, -2);
+  flagShape.quadraticCurveTo(8 * FLAG_S, 5 * FLAG_S, 16 * FLAG_S, 3 * FLAG_S);
+  flagShape.quadraticCurveTo(22 * FLAG_S, 1 * FLAG_S, 26 * FLAG_S, 4 * FLAG_S);
+  flagShape.lineTo(25 * FLAG_S, -2 * FLAG_S);
+  flagShape.quadraticCurveTo(18 * FLAG_S, -4 * FLAG_S, 12 * FLAG_S, -1 * FLAG_S);
+  flagShape.quadraticCurveTo(6 * FLAG_S, 1 * FLAG_S, 0, -2 * FLAG_S);
   flagShape.lineTo(0, 0);
-  const flagGeo = new THREE.ShapeGeometry(flagShape);
-  const flag = new THREE.Mesh(flagGeo, flagMat);
+  const flag = new THREE.Mesh(new THREE.ShapeGeometry(flagShape), flagMat);
   flag.userData.noMerge = true;
   flagGroup.add(flag);
-  // Saffron secondary pennant below
+
+  // Saffron secondary pennant below the main dhwaja
   const pennantShape = new THREE.Shape();
-  pennantShape.moveTo(0, -2);
-  pennantShape.quadraticCurveTo(10, -5, 18, -3);
-  pennantShape.lineTo(16, -6);
-  pennantShape.quadraticCurveTo(8, -8, 0, -5);
-  pennantShape.lineTo(0, -2);
+  pennantShape.moveTo(0, -2 * FLAG_S);
+  pennantShape.quadraticCurveTo(10 * FLAG_S, -5 * FLAG_S, 18 * FLAG_S, -3 * FLAG_S);
+  pennantShape.lineTo(16 * FLAG_S, -6 * FLAG_S);
+  pennantShape.quadraticCurveTo(8 * FLAG_S, -8 * FLAG_S, 0, -5 * FLAG_S);
+  pennantShape.lineTo(0, -2 * FLAG_S);
   const pennant = new THREE.Mesh(new THREE.ShapeGeometry(pennantShape), saffronBright);
   pennant.userData.noMerge = true;
   flagGroup.add(pennant);
+
   mandir.add(flagGroup);
+  // Belt and braces: every mesh in the group carries noMerge, whatever it is
+  flagGroup.traverse(o => { o.userData.noMerge = true; });
   // Store reference for animation
   mandir.userData.flagGroup = flagGroup;
 
@@ -833,9 +842,18 @@ export function createEnvironment(scene) {
   // Distant Ram Mandir — mergeStatic collapses everything EXCEPT the flag
   // (which carries userData.noMerge so it stays a separate object for animation)
   const temple = makeMountKailash();
+  // Grab the flag BEFORE merging. Plain assignment to the module-level `let`
+  // above - declaring it const/let here would shadow it and the flag would
+  // never animate.
   templeFlag = temple.userData.flagGroup;
   const kailash = mergeStatic(temple);
   kailash.position.set(0, 0, -520);
+  // The chase camera sits at y3.4 and looks DOWN at (0, 1.2, -12) - a 6.9°
+  // pitch that puts the highest visible point at z=-520 around y=217. The
+  // temple stands 287 units to the tip of its dhwaja, so at full size the
+  // shikhara, kalasha, pole and flag were all cropped off the top of the
+  // screen. Scaled to fit, the whole silhouette - flag included - is in frame.
+  kailash.scale.setScalar(0.70);
   scene.add(kailash);
 
   // Temple pillars, both sides, every 15 units
@@ -906,7 +924,7 @@ export function updateEnvironment(scrollDelta, dt = 0) {
 
   // Dhwaja flag waving — a gentle oscillation so it looks like wind is blowing
   if (templeFlag) {
-    templeFlag.rotation.y = -0.3 + Math.sin(swayTime * 2.5) * 0.25;
+    templeFlag.rotation.y = -0.4 + Math.sin(swayTime * 2.5) * 0.25;
     templeFlag.rotation.z = Math.sin(swayTime * 3.2 + 1.0) * 0.08;
     templeFlag.scale.x = 1.0 + Math.sin(swayTime * 4.0) * 0.06;
   }

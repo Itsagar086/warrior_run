@@ -111,18 +111,49 @@ const report = await ev(`(async () => {
     const pass = survived === expectSurvive;
     rows.push({ name, outcome, lives: state.lives, survived, expectSurvive, pass });
   }
+  // ---- SHIELD: divine protection absorbs EVERY hazard, zone 1 fire included.
+  // Each case walks straight into the hazard grounded - without a shield that
+  // is a lost life, or the whole run for fire.
+  const shieldRows = [];
+  for (const [type, zone] of [['firePit', 1], ['boulder', 2], ['archGate', 2],
+                              ['evilSoul', 2], ['cobra', 2], ['asura', 2],
+                              ['brokenRoad', 2]]) {
+    state.lives = 3; state.stumbleTimer = 0; state.shieldTimer = 5.5;
+    state.phase = 'playing'; state.combo = 2; state.punya = 1000;
+    state.playerY = 0; state.playerVY = 0;
+    state.isGrounded = true; state.isSliding = false;
+    state.standingOn = null; state.groundY = 0;
+
+    const obs = fakeObs(type, zone, type === 'boulder' ? { standHeight: 1.8 } : {});
+    const outcome = resolveObstacleCollision(obs, type);
+    const gain = state.punya - 1000;
+    shieldRows.push({
+      type, zone, outcome, hidden: obs.visible === false,
+      lives: state.lives, gain, phase: state.phase,
+      pass: outcome === 'skip' && obs.visible === false && state.lives === 3 &&
+            gain === 100 && state.phase === 'playing',
+    });
+  }
+
   for (const f of FIELDS) state[f] = snap[f];
-  return rows;
+  return { rows, shieldRows };
 })()`);
 
-if (!Array.isArray(report)) { console.error('matrix failed:', JSON.stringify(report)); }
+if (!report || !Array.isArray(report.rows)) { console.error('matrix failed:', JSON.stringify(report)); }
 else {
   let failed = 0;
-  for (const r of report) {
+  for (const r of report.rows) {
     if (!r.pass) failed++;
     console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.name.padEnd(28)} outcome=${String(r.outcome).padEnd(5)} lives=${r.lives} survived=${r.survived} expected=${r.expectSurvive}`);
   }
-  console.log(failed === 0 ? `\nALL ${report.length} CASES PASS` : `\n${failed} CASES FAILED`);
+  console.log('');
+  console.log('--- SHIELD absorbs every hazard (zone 1 fire included) ---');
+  for (const r of report.shieldRows) {
+    if (!r.pass) failed++;
+    console.log(`${r.pass ? 'PASS' : 'FAIL'}  shield vs ${r.type.padEnd(11)} zone=${r.zone} outcome=${String(r.outcome).padEnd(5)} hidden=${r.hidden} lives=${r.lives} punya+${r.gain} phase=${r.phase}`);
+  }
+  const total = report.rows.length + report.shieldRows.length;
+  console.log(failed === 0 ? `\nALL ${total} CASES PASS` : `\n${failed} CASES FAILED`);
 }
 ws.close(); ch.kill(); srv.close();
 try { fs.rmSync(prof, { recursive: true, force: true }); } catch {}
