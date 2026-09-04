@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naga Loka Runner — Game Design Document</title>
+<style>
+  :root {
+    --bg: #0d0b1e;
+    --bg-deep: #090714;
+    --panel: #151129;
+    --panel-2: #1b1535;
+    --line: #2c2450;
+    --line-soft: #221b40;
+    --ink: #e9e2d2;
+    --ink-dim: #a99fc4;
+    --ink-faint: #776d96;
+    --gold: #e8c15a;
+    --gold-bright: #ffd97a;
+    --saffron: #f08c1e;
+    --saffron-deep: #c2410c;
+    --teal: #4de0c0;
+    --violet: #a98cf0;
+    --code-bg: #100c22;
+    --k: #f08c1e;      /* keywords */
+    --s: #9ece7a;      /* strings */
+    --c: #6a6190;      /* comments */
+    --n: #7ab8ff;      /* numbers */
+    --f: #e8c15a;      /* function names */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.68;
+  }
+  ::selection { background: rgba(240, 140, 30, 0.35); }
+
+  /* ------------------------------------------------------------ layout */
+  .shell { display: flex; max-width: 1340px; margin: 0 auto; }
+  nav.side {
+    position: sticky; top: 0; align-self: flex-start;
+    width: 264px; flex: 0 0 264px;
+    height: 100vh; overflow-y: auto;
+    padding: 28px 18px 40px 22px;
+    border-right: 1px solid var(--line-soft);
+    background: var(--bg-deep);
+    scrollbar-width: thin;
+  }
+  nav.side .om { font-size: 30px; color: var(--gold); display: block; text-align: center; margin-bottom: 4px; }
+  nav.side .navtitle {
+    text-align: center; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 18px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  nav.side a {
+    display: block; color: var(--ink-dim); text-decoration: none;
+    font-size: 13.5px; padding: 6px 10px; border-radius: 6px;
+    border-left: 2px solid transparent; margin-bottom: 1px;
+  }
+  nav.side a:hover { color: var(--gold-bright); background: var(--panel); border-left-color: var(--saffron); }
+  nav.side a .num { color: var(--saffron); font-family: Consolas, monospace; font-size: 11.5px; margin-right: 7px; }
+  main { flex: 1; min-width: 0; padding: 0 44px 80px; }
+
+  /* -------------------------------------------------------------- hero */
+  header.hero {
+    text-align: center; padding: 72px 20px 48px;
+    border-bottom: 1px solid var(--line);
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 0%, rgba(76, 52, 128, 0.35), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(240, 140, 30, 0.08), transparent 70%);
+    margin: 0 -44px 48px;
+  }
+  header.hero .mantra {
+    color: var(--gold); font-size: 15px; letter-spacing: 6px; opacity: 0.85; margin-bottom: 18px;
+    font-family: Georgia, serif;
+  }
+  header.hero h1 {
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-size: clamp(34px, 5vw, 56px); font-weight: 700; line-height: 1.12;
+    color: var(--gold-bright); letter-spacing: 0.5px;
+    text-shadow: 0 0 40px rgba(232, 193, 90, 0.25);
+  }
+  header.hero h1 .sub {
+    display: block; font-size: clamp(17px, 2.2vw, 24px);
+    color: var(--saffron); font-style: italic; margin-top: 10px; letter-spacing: 2px;
+  }
+  header.hero .tagline { color: var(--ink-dim); max-width: 620px; margin: 22px auto 0; font-size: 16px; }
+  header.hero .badges { margin-top: 26px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600;
+    color: var(--ink-dim); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 20px; padding: 6px 16px;
+  }
+  .badge b { color: var(--teal); font-weight: 700; }
+
+  /* ---------------------------------------------------------- sections */
+  section { margin-bottom: 64px; }
+  .divider {
+    text-align: center; color: var(--saffron); font-size: 15px; letter-spacing: 12px;
+    margin: 0 0 20px; opacity: 0.75; user-select: none;
+  }
+  .divider::before, .divider::after { content: "———"; color: var(--line); letter-spacing: 0; margin: 0 14px; }
+  h2 {
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    color: var(--gold); font-size: 30px; font-weight: 700; margin-bottom: 6px;
+    text-wrap: balance;
+  }
+  h2 .num { color: var(--saffron); font-size: 20px; vertical-align: 4px; margin-right: 10px; font-family: Consolas, monospace; }
+  .lede { color: var(--ink-dim); font-size: 15.5px; margin-bottom: 22px; max-width: 72ch; }
+  h3 {
+    color: var(--saffron); font-size: 19px; font-weight: 650; margin: 30px 0 10px;
+    font-family: "Palatino Linotype", Georgia, serif;
+  }
+  h4 { color: var(--gold); font-size: 15.5px; margin: 20px 0 8px; }
+  p { margin-bottom: 13px; max-width: 76ch; }
+  strong { color: var(--gold-bright); font-weight: 650; }
+  em { color: var(--violet); }
+  ul, ol { margin: 0 0 14px 24px; max-width: 74ch; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--saffron); }
+  a { color: var(--teal); text-decoration: none; border-bottom: 1px dotted rgba(77, 224, 192, 0.4); }
+  a:hover { color: #7df0d8; border-bottom-style: solid; }
+  code {
+    font-family: Consolas, "Cascadia Code", Menlo, monospace; font-size: 0.88em;
+    background: var(--code-bg); color: var(--gold-bright);
+    padding: 2px 7px; border-radius: 5px; border: 1px solid var(--line-soft);
+  }
+
+  /* ---------------------------------------------------------- code blocks */
+  .codewrap { position: relative; margin: 16px 0 20px; }
+  .codewrap .lang {
+    position: absolute; top: 9px; right: 14px; font-size: 10.5px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .codewrap .src {
+    position: absolute; top: 9px; left: 16px; font-size: 11px;
+    color: var(--saffron); font-family: Consolas, monospace; opacity: 0.85;
+  }
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-left: 3px solid var(--saffron);
+    border-radius: 10px; padding: 34px 20px 18px;
+    overflow-x: auto; font-family: Consolas, "Cascadia Code", Menlo, monospace;
+    font-size: 13px; line-height: 1.58; color: #cfc6e8;
+    tab-size: 2;
+  }
+  pre.code .k { color: var(--k); }
+  pre.code .s { color: var(--s); }
+  pre.code .c { color: var(--c); font-style: italic; }
+  pre.code .n { color: var(--n); }
+  pre.code .f { color: var(--f); }
+
+  /* -------------------------------------------------------------- tables */
+  .tablewrap { overflow-x: auto; margin: 16px 0 22px; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 560px; }
+  thead th {
+    background: var(--panel-2); color: var(--gold);
+    text-align: left; padding: 11px 14px; font-size: 12.5px;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    border-bottom: 2px solid var(--line);
+    white-space: nowrap;
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(odd) { background: rgba(255, 255, 255, 0.015); }
+  td b { color: var(--gold-bright); }
+  td .mono { font-family: Consolas, monospace; font-size: 13px; color: var(--teal); font-variant-numeric: tabular-nums; }
+  .zone1 { color: #ff7a5c; font-weight: 700; }
+  .zone2 { color: var(--saffron); font-weight: 700; }
+  .good { color: var(--teal); font-weight: 650; }
+
+  /* ------------------------------------------------------------- extras */
+  .callout {
+    background: var(--panel); border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: 10px; padding: 16px 20px; margin: 18px 0 22px;
+    max-width: 78ch;
+  }
+  .callout .tag {
+    font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+    color: var(--gold); font-weight: 700; display: block; margin-bottom: 6px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout.warn { border-left-color: #ff7a5c; }
+  .callout.warn .tag { color: #ff7a5c; }
+  .callout.teal { border-left-color: var(--teal); }
+  .callout.teal .tag { color: var(--teal); }
+
+  pre.tree {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px 22px; overflow-x: auto;
+    font-family: Consolas, Menlo, monospace; font-size: 13px; line-height: 1.62;
+    color: var(--ink-dim); margin: 16px 0 22px;
+  }
+  pre.tree .d { color: var(--saffron); font-weight: 700; }
+  pre.tree .f2 { color: var(--ink); }
+  pre.tree .note { color: var(--ink-faint); font-style: italic; }
+  pre.tree .loc { color: var(--teal); }
+
+  .depgraph { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 24px; }
+  .deprow { display: flex; gap: 10px; flex-wrap: wrap; align-items: stretch; }
+  .deprow .layer-label {
+    flex: 0 0 118px; display: flex; align-items: center; justify-content: flex-end;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-faint);
+    padding-right: 6px; text-align: right;
+  }
+  .depnode {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 13px; font-family: Consolas, monospace; font-size: 12.5px; color: var(--ink);
+  }
+  .depnode.hot { border-color: var(--saffron); color: var(--gold-bright); }
+  .deparrow { text-align: center; color: var(--ink-faint); font-size: 13px; letter-spacing: 4px; margin-left: 128px; }
+
+  .statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0 24px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; text-align: center;
+  }
+  .stat .v { font-size: 26px; font-weight: 750; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 11.5px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-faint); margin-top: 3px; }
+
+  kbd {
+    font-family: Consolas, monospace; font-size: 12.5px; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 3px;
+    border-radius: 6px; padding: 2px 9px; white-space: nowrap;
+  }
+
+  footer {
+    border-top: 1px solid var(--line); margin: 40px -44px 0; padding: 40px 44px 48px;
+    text-align: center; background: var(--bg-deep);
+  }
+  footer .om { font-size: 26px; color: var(--gold); margin-bottom: 10px; }
+  footer .links { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+  footer .links a {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 24px;
+    padding: 10px 24px; font-size: 14px; font-weight: 600;
+  }
+  footer .fine { color: var(--ink-faint); font-size: 12.5px; margin-top: 10px; }
+
+  @media (max-width: 980px) {
+    .shell { flex-direction: column; }
+    nav.side {
+      position: static; width: auto; height: auto; flex: none;
+      border-right: none; border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 2px 4px; padding: 16px;
+    }
+    nav.side .om, nav.side .navtitle { display: none; }
+    nav.side a { font-size: 12.5px; padding: 4px 9px; border: 1px solid var(--line-soft); border-radius: 14px; }
+    main { padding: 0 22px 60px; }
+    header.hero, footer { margin-left: -22px; margin-right: -22px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<nav class="side">
+  <span class="om">ॐ</span>
+  <div class="navtitle">Design Document</div>
+  <a href="#overview"><span class="num">01</span>Project Overview</a>
+  <a href="#architecture"><span class="num">02</span>Technical Architecture</a>
+  <a href="#engine"><span class="num">03</span>Engine &amp; Core Systems</a>
+  <a href="#player"><span class="num">04</span>Player System</a>
+  <a href="#obstacles"><span class="num">05</span>Obstacle System</a>
+  <a href="#powers"><span class="num">06</span>Divine Power System</a>
+  <a href="#naga"><span class="num">07</span>Naga Chase Mechanic</a>
+  <a href="#scoring"><span class="num">08</span>Collectibles &amp; Scoring</a>
+  <a href="#spawning"><span class="num">09</span>Spawn System</a>
+  <a href="#environment"><span class="num">10</span>Environment &amp; Visuals</a>
+  <a href="#ui"><span class="num">11</span>UI and HUD</a>
+  <a href="#audio"><span class="num">12</span>Audio System</a>
+  <a href="#rules"><span class="num">13</span>Rules &amp; How to Play</a>
+  <a href="#math"><span class="num">14</span>Key Algorithms &amp; Math</a>
+  <a href="#journey"><span class="num">15</span>Development Journey</a>
+  <a href="#performance"><span class="num">16</span>Performance</a>
+</nav>
+
+<main>
+
+<header class="hero">
+  <div class="mantra">॥ ॐ नमः शिवाय ॥</div>
+  <h1>Naga Loka Runner
+    <span class="sub">— Saiyan Through the Snake Way —</span>
+  </h1>
+  <p class="tagline">A 3-D endless runner in which a Hindu warrior-devotee sprints the sacred serpent
+  causeway toward Mount Kailash — 2000 metres of fire, demons and temptation between him and the summit,
+  and an eternal path beyond it for those who refuse to stop.</p>
+  <div class="badges">
+    <span class="badge">Engine <b>Three.js 0.184</b></span>
+    <span class="badge">Language <b>ES Modules</b></span>
+    <span class="badge">Source <b>6,658 lines · 29 modules</b></span>
+    <span class="badge">Platform <b>Web · Keyboard + Touch</b></span>
+    <span class="badge">Assets <b>100% procedural</b></span>
+  </div>
+</header>
+
+<!-- ================================================================ 1 -->
+<section id="overview">
+  <div class="divider">ॐ</div>
+  <h2><span class="num">01</span>Project Overview</h2>
+  <p class="lede">What the game is, the mythology it draws on, and what it is built with.</p>
+
+  <h3>The Game</h3>
+  <p><strong>Naga Loka Runner — Saiyan Through the Snake Way</strong> is a lane-based 3-D endless runner.
+  The player is a bare-chested warrior-devotee — janeu across his back, rudraksha at his throat and wrists,
+  saffron dhoti at his waist — sprinting a moonlit temple causeway carved with Sanskrit, three lanes wide,
+  flanked by torch-lit pillars and dark forest. The destination glows on the horizon the entire run:
+  the snow-crowned pyramid of <strong>Mount Kailash</strong>.</p>
+
+  <h3>The Mythology</h3>
+  <ul>
+    <li><strong>Naga Loka</strong> — in Hindu cosmology, the subterranean realm of the serpent-beings, the Nagas.
+    The causeway the devotee runs is the "Snake Way" through their domain; its guardians (the coiled cobras, the
+    hunting rival Naga) test whether he is worthy of passage.</li>
+    <li><strong>Mount Kailash</strong> — the abode of <strong>Lord Shiva</strong>, the axis of the world, the
+    most sacred summit in Hindu, Buddhist and Jain tradition. Reaching it completes the pilgrimage.</li>
+    <li><strong>Lord Vishnu</strong> — the preserver, lends the devotee two of his instruments: the
+    <em>Sudarshan Chakra</em> (his spinning discus) and his protective shield.</li>
+    <li><strong>Lord Shiva</strong> — lends the <em>Trishul</em>, the trident that purifies all three lanes at once.</li>
+    <li><strong>Punya</strong> (merit), <strong>Shakti</strong> (divine energy), <strong>Om</strong> glyphs and
+    <strong>Rudraksha</strong> beads (Shiva's sacred seed) form the game's entire economy — every scoring word
+    in the HUD is drawn from the tradition.</li>
+    <li>The <strong>Asura</strong> demons and <strong>evil souls</strong> that block the path are the classic
+    adversaries of the devas — obstacles of the spirit made physical.</li>
+  </ul>
+
+  <h3>Goal &amp; Win Condition</h3>
+  <p>Survive <strong>2000 m</strong> of hazards to reach the Gates of Kailash. There the run pauses on a choice:
+  <strong>Ascend</strong> — completing the pilgrimage and banking the score as a victory — or
+  <strong>Walk the Eternal Path</strong>: an endless continuation beyond the mountain where the road grows
+  crueller every league and all punya is multiplied ×2, deepening every further 1000 m. Death at any point
+  ends the run; best punya and best distance persist between sessions.</p>
+
+  <h3>Platform &amp; Technology</h3>
+  <ul>
+    <li><strong>Web-native</strong>, no install: a single <code>index.html</code> plus ES modules served statically.</li>
+    <li><strong>Three.js 0.184.0</strong> from CDN via import map; the <code>playlabs-boot</code> engine shim
+    (embedded in <code>index.html</code> as a <code>data:</code> module) supplies renderer/scene/camera/clock bootstrap.</li>
+    <li><strong>Zero binary assets</strong> — every mesh is generated in code, every texture is drawn to a canvas at
+    runtime, every sound is a Web Audio oscillator. The whole game is text.</li>
+    <li>Input: keyboard and full touch controls; persistence via <code>localStorage</code>.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 2 -->
+<section id="architecture">
+  <div class="divider">☸</div>
+  <h2><span class="num">02</span>Technical Architecture</h2>
+  <p class="lede">Twenty-nine ES modules in five layers, organised so every file owns one concern and the
+  dependency arrows only ever point downward.</p>
+
+  <h3>File &amp; Folder Structure</h3>
+<pre class="tree"><span class="d">warrior_run/</span>
+├── <span class="f2">index.html</span>                 <span class="note">shell: import map, boot sandbox, entry &lt;script&gt;</span>
+├── <span class="f2">serve.mjs</span>                  <span class="note">zero-dependency dev server (node serve.mjs → :8000)</span>
+├── <span class="f2">metadata-v2.json</span>           <span class="note">export manifest (engine, renderer, platforms)</span>
+├── <span class="d">docs/</span>                      <span class="note">this report</span>
+├── <span class="d">devtools/</span>
+│   ├── <span class="f2">player-preview.html</span>    <span class="note">renders the hero (or ?who=asura) alone, for art direction</span>
+│   └── <span class="d">tests/</span>                 <span class="note">6 headless regression suites (see §15)</span>
+└── <span class="d">src/</span>
+    ├── <span class="d">core/</span>                  <span class="note">the beating heart</span>
+    │   ├── <span class="f2">Game.js</span>            <span class="loc">345</span>  <span class="note">entry: boot, world build, warm-up, sim + render loop</span>
+    │   ├── <span class="f2">GameState.js</span>        <span class="loc">64</span>  <span class="note">the single mutable state object every system shares</span>
+    │   ├── <span class="f2">InputHandler.js</span>     <span class="loc">81</span>  <span class="note">keyboard + touch-swipe → verbs (jump/slide/lane/E/C)</span>
+    │   └── <span class="f2">CameraRig.js</span>        <span class="loc">75</span>  <span class="note">eased chase camera + impact shake</span>
+    ├── <span class="d">entities/</span>              <span class="note">things with a body and behaviour</span>
+    │   ├── <span class="f2">Player.js</span>          <span class="loc">559</span>  <span class="note">rig contract, run/jump/slide animation, physics, dust, trail</span>
+    │   ├── <span class="f2">WarriorBody.js</span>     <span class="loc">379</span>  <span class="note">the hero's SDF-sculpted, skinned body (see §4)</span>
+    │   ├── <span class="f2">Obstacles.js</span>       <span class="loc">441</span>  <span class="note">fire pit, boulder, arch gate, broken slab + the pool</span>
+    │   ├── <span class="f2">AsuraDemon.js</span>      <span class="loc">334</span>  <span class="note">SDF-sculpted demon brute, war paint, spiked club</span>
+    │   ├── <span class="f2">CobraSnake.js</span>      <span class="loc">179</span>  <span class="note">coiled cobra, spine-wave sway, proximity hood-flare</span>
+    │   ├── <span class="f2">EvilSoul.js</span>        <span class="loc">86</span>  <span class="note">head-height spirit, sine drift + bob</span>
+    │   ├── <span class="f2">NagaChaser.js</span>      <span class="loc">281</span>  <span class="note">the rival serpent: trigger, pursuit, strike, escape</span>
+    │   └── <span class="f2">Collectibles.js</span>    <span class="loc">318</span>  <span class="note">Om coins, rudraksha beads, three power pickups</span>
+    ├── <span class="d">systems/</span>               <span class="note">rules that act on entities</span>
+    │   ├── <span class="f2">SpawnSystem.js</span>     <span class="loc">382</span>  <span class="note">stage table, distance-gated spawning, pools, recycling</span>
+    │   ├── <span class="f2">CollisionSystem.js</span> <span class="loc">131</span>  <span class="note">3-D hazard bands, two-zone damage, stand-on-boulder</span>
+    │   ├── <span class="f2">PowerSystem.js</span>     <span class="loc">264</span>  <span class="note">held power (E), Shakti ultimate (C), projectiles</span>
+    │   ├── <span class="f2">ScoreSystem.js</span>     <span class="loc">96</span>  <span class="note">punya, combo, shakti gains, localStorage best</span>
+    │   ├── <span class="f2">FXSystem.js</span>        <span class="loc">70</span>  <span class="note">48-spark particle pool</span>
+    │   └── <span class="f2">AudioSystem.js</span>     <span class="loc">71</span>  <span class="note">six synthesised cues, zero audio files</span>
+    ├── <span class="d">environment/</span>
+    │   ├── <span class="f2">Track.js</span>           <span class="loc">229</span>  <span class="note">flagstone causeway, gold lane lines, Sanskrit decals</span>
+    │   ├── <span class="f2">Environment.js</span>     <span class="loc">618</span>  <span class="note">Kailash, sky dome shader, pillars, trees, torches</span>
+    │   └── <span class="f2">Lighting.js</span>        <span class="loc">215</span>  <span class="note">moonlight night rig, warm-light pool, stage moods</span>
+    ├── <span class="d">ui/</span>
+    │   ├── <span class="f2">HUD.js</span>             <span class="loc">406</span>  <span class="note">punya/distance/lives/shakti cards, banner, touch pad</span>
+    │   ├── <span class="f2">StartScreen.js</span>     <span class="loc">71</span>  <span class="note">splash card with full controls tutorial</span>
+    │   └── <span class="f2">GameOver.js</span>        <span class="loc">208</span>  <span class="note">death card, victory card, Kailash ascension choice</span>
+    └── <span class="d">utils/</span>
+        ├── <span class="f2">Constants.js</span>       <span class="loc">57</span>  <span class="note">every tuning number in one place, incl. STAGES table</span>
+        ├── <span class="f2">AnimationHelper.js</span> <span class="loc">27</span>  <span class="note">swing / swingForward / bounce — the gait vocabulary</span>
+        ├── <span class="f2">SdfKit.js</span>          <span class="loc">397</span>  <span class="note">SDF sculpting → marching cubes → skinning engine</span>
+        ├── <span class="f2">MeshMerge.js</span>       <span class="loc">189</span>  <span class="note">draw-call collapser for static props</span>
+        └── <span class="f2">AssetFactory.js</span>    <span class="loc">85</span>  <span class="note">single re-export point for every makeXxx builder</span></pre>
+
+  <h3>Why It Is Organised This Way</h3>
+  <ul>
+    <li><strong>Separation of concerns by game-architecture role.</strong> <em>Entities</em> know how to look and move;
+    <em>systems</em> know the rules that connect them; <em>core</em> owns time, input and state; <em>environment</em> is
+    scenery with no gameplay; <em>ui</em> is pure DOM; <em>utils</em> are dependency-free helpers. A designer tuning
+    difficulty touches one file (<code>Constants.js</code>); an artist reshaping the hero touches one file
+    (<code>WarriorBody.js</code>).</li>
+    <li><strong>One shared state object, imported everywhere</strong> (<code>GameState.js</code>) rather than a message
+    bus — the right size of solution for a game this scale, and trivially inspectable
+    (<code>window.__getGameState()</code>).</li>
+    <li><strong>Builders live beside behaviour.</strong> <code>makeAsuraDemon()</code> sits in the same file as
+    <code>updateAsura()</code>, so shape and motion evolve together; <code>AssetFactory.js</code> re-exports all
+    builders for tooling.</li>
+  </ul>
+
+  <h3>Module Dependency Graph</h3>
+  <p>Arrows only point downward — no layer imports from above it, and there are no cycles:</p>
+  <div class="depgraph">
+    <div class="deprow"><span class="layer-label">Entry</span>
+      <span class="depnode hot">index.html</span><span class="depnode hot">core/Game.js</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">Core</span>
+      <span class="depnode">InputHandler</span><span class="depnode">CameraRig</span><span class="depnode">GameState</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">Systems</span>
+      <span class="depnode">SpawnSystem</span><span class="depnode">CollisionSystem</span><span class="depnode">PowerSystem</span>
+      <span class="depnode">ScoreSystem</span><span class="depnode">FXSystem</span><span class="depnode">AudioSystem</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">Entities</span>
+      <span class="depnode">Player</span><span class="depnode">WarriorBody</span><span class="depnode">Obstacles</span>
+      <span class="depnode">AsuraDemon</span><span class="depnode">CobraSnake</span><span class="depnode">EvilSoul</span>
+      <span class="depnode">NagaChaser</span><span class="depnode">Collectibles</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">Env + UI</span>
+      <span class="depnode">Track</span><span class="depnode">Environment</span><span class="depnode">Lighting</span>
+      <span class="depnode">HUD</span><span class="depnode">StartScreen</span><span class="depnode">GameOver</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">Utils</span>
+      <span class="depnode">Constants</span><span class="depnode">AnimationHelper</span><span class="depnode">SdfKit</span>
+      <span class="depnode">MeshMerge</span><span class="depnode">AssetFactory</span></div>
+    <div class="deparrow">▼</div>
+    <div class="deprow"><span class="layer-label">External</span>
+      <span class="depnode">three</span><span class="depnode">three/addons (MarchingCubes, BufferGeometryUtils, SkeletonUtils)</span>
+      <span class="depnode">playlabs-boot</span></div>
+  </div>
+
+  <h3>How the Game Bootstraps</h3>
+  <p><code>index.html</code> declares the <strong>import map</strong> — bare specifiers <code>three</code> and
+  <code>three/addons/</code> resolve to the jsDelivr CDN, while the <code>playlabs-*</code> engine modules are embedded
+  as base64 <code>data:</code> URLs, so the engine ships inside the HTML file itself. A small inline sandbox shim
+  guards <code>localStorage</code>/rAF for iframe hosts, then
+  <code>&lt;script type="module" src="./src/core/Game.js"&gt;</code> starts everything:</p>
+  <ol>
+    <li><code>boot()</code> (playlabs-boot) creates renderer, scene, camera, clock and canvas.</li>
+    <li><code>setupLighting()</code> strips the engine's sunset rig and installs the moonlit night.</li>
+    <li>UI root, HUD, splash, end screens and pause overlay are assembled in the DOM.</li>
+    <li>Track, environment, player, Naga and the full obstacle pool are constructed <em>hidden</em>.</li>
+    <li><code>warmUpPipeline()</code> force-compiles every shader behind the splash screen (§16).</li>
+    <li><code>animate()</code> starts the frame loop; the game waits in phase <code>splash</code> until
+    the player presses <em>Begin Sacred Pilgrimage</em>, which calls <code>window.__startGame()</code>.</li>
+  </ol>
+</section>
+
+<!-- ================================================================ 3 -->
+<section id="engine">
+  <div class="divider">✦</div>
+  <h2><span class="num">03</span>Game Engine &amp; Core Systems</h2>
+  <p class="lede">A variable-timestep loop with a bounded sub-step — smooth at any refresh rate, and
+  incapable of tunnelling the player through a hazard after a stall.</p>
+
+  <h3>The Frame Loop</h3>
+  <p>Each rendered frame advances the world by exactly its own duration. The loop measures real frame time with
+  <code>performance.now()</code> (the shared THREE clock cannot be used, because animation code samples
+  <code>getElapsedTime()</code> mid-frame, which would corrupt <code>getDelta()</code>), clamps it to a catch-up
+  budget, and splits long frames into equal sub-steps:</p>
+
+  <div class="codewrap"><span class="src">src/core/Game.js</span><span class="lang">JavaScript</span>
+<pre class="code">const MAX_SUB_STEP = 1 / 30;
+const MAX_CATCH_UP_STEPS = 4;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  let frameTime = (now - lastFrameTime) / 1000;
+  lastFrameTime = now;
+
+  // Discard time beyond the catch-up budget rather than spiralling after a
+  // genuine stall (alt-tab, GC, a breakpoint).
+  const maxFrame = MAX_SUB_STEP * MAX_CATCH_UP_STEPS;
+  if (frameTime > maxFrame) frameTime = maxFrame;
+
+  // One step per frame in the normal case; only a long frame is subdivided
+  const steps = Math.max(1, Math.ceil(frameTime / MAX_SUB_STEP));
+  const dt = frameTime / steps;
+  for (let i = 0; i < steps; i++) {
+    if (state.phase === 'playing') updateSimulation(dt);
+    updateFX(dt);
+    updateLighting(dt);
+  }
+  updateCamera(frameTime);   // presentation eases on REAL frame time
+  renderer.render(scene, camera);
+}</pre></div>
+
+  <div class="callout warn"><span class="tag">Why not a fixed 60 Hz accumulator?</span>
+  <p>The loop originally stepped a fixed 1/60 s fed by an accumulator. On a 144 Hz display only ~42% of rendered
+  frames moved the world, in an uneven 2-2-3 cadence — constant micro-stutter no GPU could fix. The current design
+  advances every frame by its true duration, keeps a 1/30 s upper bound per sub-step (at max speed 22 u/s that is
+  0.73 units of travel against collision windows ≥1.6 units — no tunnelling), and caps catch-up at 4 sub-steps so a
+  stall becomes slow-motion, never a teleport.</p></div>
+
+  <h3>Delta Time Everywhere</h3>
+  <p>All motion is <code>value += rate × dt</code>; all easing is frame-rate-corrected lerp,
+  <code>lerp(a, b, min(1, k·dt))</code>. Distance itself derives from speed:
+  <code>scrollDelta = state.speed × dt</code> — the world scrolls toward the player, who never moves in Z.</p>
+
+  <h3>The Chase Camera</h3>
+  <p><code>CameraRig.js</code> parks the eye 6.2 units behind and 3.4 above the devotee and <em>eases</em> on every
+  axis: X follows at 65% of the player's lane offset (rate 10), height adds 35% of jump altitude (rate 8 — it used to
+  snap, which read as flinching), and the look-target eases separately (rate 9) so a lane change sweeps rather than
+  cuts. Impact shake is a decaying random offset with an amplitude of just 0.02 world units — weight, not wobble.
+  Critically the camera updates on <em>real frame time</em>, outside the sub-step loop, so it stays silk on 144 Hz.</p>
+
+  <h3>The Speed Ramp</h3>
+  <p>Speed starts at <span class="mono">0</span> on the starting line and eases toward a stepped target:
+  <strong>12 u/s base, +0.5 every 200 m, capped at 22</strong> — a 2000 m pilgrimage tops out at 17 u/s, and only the
+  Eternal Path ever sees the cap (at 4000 m). The easing constant (<code>SPEED_EASE 2.6</code>) makes each step a
+  swell rather than a jolt.</p>
+
+  <h3>The Phase System</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Phase</th><th>Entered by</th><th>What runs</th></tr></thead>
+    <tbody>
+      <tr><td><b>splash</b></td><td>page load</td><td>render loop only; world visible behind the start card</td></tr>
+      <tr><td><b>playing</b></td><td><code>__startGame()</code> / resume / eternal choice</td><td>full simulation</td></tr>
+      <tr><td><b>paused</b></td><td><kbd>P</kbd> / <kbd>Esc</kbd> (guarded: only from <em>playing</em>)</td><td>render only, overlay shown</td></tr>
+      <tr><td><b>ascension</b></td><td>crossing 2000 m (non-eternal)</td><td>world freezes at the gates; choice overlay</td></tr>
+      <tr><td><b>gameOver</b></td><td><code>endRun(false)</code></td><td>death card with score + best</td></tr>
+      <tr><td><b>victory</b></td><td><code>endRun(true)</code> via Ascend</td><td>victory card</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ================================================================ 4 -->
+<section id="player">
+  <div class="divider">🏹</div>
+  <h2><span class="num">04</span>Player System</h2>
+  <p class="lede">One continuous, muscled, GPU-skinned body — sculpted in signed-distance fields, polygonised
+  by marching cubes, and driven by the same bone rotations the animation code always wrote.</p>
+
+  <h3>How the Character Is Built</h3>
+  <p>The devotee is <em>not</em> assembled from boxes and cylinders. <code>SdfKit.js</code> provides a miniature
+  character pipeline: anatomy is authored as ~45 blended signed-distance volumes (<code>orb</code>, <code>blob</code>,
+  <code>tube</code> primitives with smooth-min union and smooth subtraction), the field is polygonised with
+  Three.js <code>MarchingCubes</code> into a single seamless mesh, welded, and skinned to a 12-bone skeleton with a
+  purpose-built weighting pass. <code>WarriorBody.js</code> is the sculpt itself:</p>
+  <ul>
+    <li><strong>Measured proportions</strong> — soles y=0, knee 0.599, hip 1.05, shoulder 1.715, crown ≈2.07:
+    every landmark taken from the character reference sheet by pixel measurement (§15).</li>
+    <li><strong>Sculpted anatomy</strong> — trapezius, deltoids, latissimus wings, pectorals, erector ridges beside a
+    subtracted spine groove, biceps, flexor-heavy forearms, quads, calves, real feet with heel/instep/toes.</li>
+    <li><strong>The dhoti</strong> is its own SDF bake: a hip wrap, per-thigh cloth columns, a tilted knee-length hem —
+    skinned to the waist <em>and both thighs</em> with a wide blend band so the skirt stretches with the stride.</li>
+    <li><strong>Signature kit</strong> as rigid accessories on bones: the janeu traced <em>onto the body surface</em> by
+    walking an ellipse along the SDF gradient until it hugs the skin; two rudraksha neck loops; arm and wrist bead
+    rings; the high crown bun with its tie; a dusty darker sole painted into vertex colours.</li>
+    <li><strong>Baked ambient occlusion</strong> — SDF-sampled AO written into vertex colours: free depth at runtime.</li>
+  </ul>
+
+  <div class="callout teal"><span class="tag">The rig contract</span>
+  <p>The animation drives <code>userData.parts</code>: <code>torso, head, leftUpperArm, leftLowerArm, rightUpperArm,
+  rightLowerArm, leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot, dust</code>.
+  Every entry except <code>dust</code> is a <code>THREE.Bone</code> — and since bones are Object3Ds, the animation
+  code that once rotated rigid group pivots now bends a continuous mesh at every joint, unchanged.</p></div>
+
+  <h3>The Running Animation</h3>
+  <p>The gait is pure sinusoidal composition, cadence-coupled to the game's actual speed:</p>
+  <div class="codewrap"><span class="src">src/entities/Player.js</span><span class="lang">JavaScript</span>
+<pre class="code">let stridePhase = 0;
+function animateRun(time, dt) {
+  stridePhase += dt * (5.5 + state.speed * 0.55);   // legs churn faster as the run accelerates
+  const t = stridePhase;
+
+  // Forward-biased hip drive; the shin lags the thigh and the heel kicks up hard
+  parts.leftUpperLeg.rotation.x  = -0.18 + swing(t, 0.75);
+  parts.rightUpperLeg.rotation.x = -0.18 + swing(t + Math.PI, 0.75);
+  parts.leftLowerLeg.rotation.x  = swingForward(t + 0.55, 0.9);
+
+  // Elbows pumped, opening on the backswing and tucking on the drive
+  parts.leftLowerArm.rotation.x  = -0.7 - swingForward(t + Math.PI + 0.6, 0.5);
+
+  // Ankles roll with a toe-down bias, flashing the darker sole at the camera
+  parts.leftFoot.rotation.x = 0.18 + swing(t + 0.9, 0.4);
+
+  // Trunk counter-rotation — the single biggest anti-robot ingredient
+  parts.torso.rotation.y = swing(t, 0.14);
+  parts.torso.rotation.x = 0.10 + state.speed * 0.004 + bounce(t, 0.025);
+  parts.torso.position.y = HIP_Y + bounce(t, 0.045);
+}</pre></div>
+  <p>Opposite limbs run π out of phase; <code>swingForward</code> clamps knees so they only ever bend the human way;
+  dust puffs are emitted at each stride's zero-crossing — exactly when a foot plants.</p>
+
+  <h3>Jump Physics</h3>
+  <p>Symplectic Euler with tuned constants: gravity <span class="mono">−34 u/s²</span>, impulse
+  <span class="mono">13.3248</span>, double-jump impulse <span class="mono">10.8</span> (mid-air, once, re-armed on
+  landing or when stepping off a boulder). The odd-looking impulse is deliberate: the integrator undershoots the
+  analytic apex by <code>v₀·dt/2</code>, so 13.3248 — not the textbook 13.04 — is what puts the <em>observed</em> apex
+  at 2.5 units (§14). While airborne the pose eases into a hero leap: arms raised and spread wide (never behind the
+  torso, where the chase camera would lose them), lead knee driving, trailing leg kicked back.</p>
+
+  <h3>Slide Mechanics</h3>
+  <p><kbd>S</kbd>/<kbd>↓</kbd> starts a <strong>0.6 s</strong> slide (mid-air it first slams down at −18 u/s). The
+  visual is a genuine pose, not a scale trick: the torso and both thigh-root bones sink together by an eased
+  <strong>0.34 units</strong>, the legs fold forward, arms flare for balance, and the body keeps its volume all the
+  way down. For collision the player's band top drops to <strong>1.15</strong> — low enough to pass under the arch
+  lintel and the floating souls. Recovery is the same easing in reverse.</p>
+
+  <h3>Lane Switching</h3>
+  <p>Three lanes at x = −2.2, 0, +2.2. Input moves a <em>target</em>; position eases every frame —
+  <code>state.playerX = lerp(playerX, targetX, LANE_SWITCH_SPEED × dt)</code> with rate 15 — giving the
+  characteristic swoop, while the camera follows at 65% for parallax.</p>
+
+  <h3>The Vishnu Shield Visual</h3>
+  <p>A translucent teal sphere (radius 1.25, emissive, 45% opacity) parented to the player group at chest height,
+  hidden until the shield power triggers. It spins on Y while <code>shieldTimer</code> runs (5.5 s), absorbs one
+  hazard contact outright, and turns the Naga's strike aside.</p>
+</section>
+
+<!-- ================================================================ 5 -->
+<section id="obstacles">
+  <div class="divider">🔥</div>
+  <h2><span class="num">05</span>Obstacle System</h2>
+  <p class="lede">Seven hazard types, one honest 3-D collision model, and a pool that never allocates
+  during play.</p>
+
+  <h3>The Roster</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Hazard</th><th>Zone</th><th>Vertical band</th><th>Behaviour</th><th>Correct answer</th></tr></thead>
+    <tbody>
+      <tr><td><b>Sacred Fire Pit</b></td><td class="zone1">1 — run ends</td><td class="mono">[0, 0.35]</td>
+        <td>Stone ring, log fire, three flame cones flickering on individual sine phases; borrows a pooled warm light when near.</td>
+        <td class="good">Jump it (or lane away)</td></tr>
+      <tr><td><b>Rolling Boulder</b></td><td class="zone2">2 — costs a life</td><td class="mono">[0.15, 1.55]</td>
+        <td>Cracked shell over a dark core, spinning at road speed (<code>core.rotation.x += speed·dt</code>), moss patches, dust puffs 25% of frames.</td>
+        <td class="good">Jump over — or <b>land on top</b> (standHeight 1.8) and ride it</td></tr>
+      <tr><td><b>Asura Demon</b></td><td class="zone2">2</td><td class="mono">[0, 1.75]</td>
+        <td>Charges the player at <b>scroll + 6 u/s</b>. One continuous SDF body with baked war paint; stomping gait pumps arms/legs via sine, swings a spiked club from the forearm bone.</td>
+        <td class="good">Jump near apex, double-jump, lane away — or destroy with a power</td></tr>
+      <tr><td><b>Evil Soul</b></td><td class="zone2">2</td><td class="mono">[1.2, 2.0]</td>
+        <td>Glowing spirit orb at head height; drifts a full lane-width laterally on a sine while bobbing vertically (§14). Zone 2 <em>because</em> it can converge with little warning.</td>
+        <td class="good">Slide under — or leap clean over</td></tr>
+      <tr><td><b>Broken Causeway</b></td><td class="zone2">2</td><td class="mono">[−2, 0.5]</td>
+        <td>A 0.52-high carved slab across the lane, molten-gold warning edge. Grounded contact trips; airborne (playerY ≥ 0.5) clears.</td>
+        <td class="good">Jump the gap</td></tr>
+      <tr><td><b>Temple Arch Gate</b></td><td class="zone2">2</td><td class="mono">[1.6, 2.6]</td>
+        <td>Carved jambs + lintel whose stone underside sits at 1.55 — the collision band starts at 1.6, so nobody dies below the visible beam.</td>
+        <td class="good">Slide under (jumping cannot fit)</td></tr>
+      <tr><td><b>Cobra Naga</b></td><td class="zone2">2</td><td class="mono">[0, 1.35]</td>
+        <td>Ten spine segments as <em>siblings</em> (a chain accumulated lean), a wave running up the coil so the head lags; the hood flares from none at 18 units out to full at 6.</td>
+        <td class="good">Jump it — sliding into it is a bite</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The Two-Zone Damage Model</h3>
+  <ul>
+    <li><strong>Zone 1</strong> (fire pit only): sacred fire is absolute — contact ends the run outright, whatever
+    the lives count.</li>
+    <li><strong>Zone 2</strong> (everything else): costs <strong>1 life</strong>, hides the obstacle, grants a
+    <strong>1.5 s stumble</strong> invulnerability window, shakes the camera — and counts as a <em>path mistake</em>
+    toward summoning the Naga (§7). On the last life, Zone 2 behaves like Zone 1.</li>
+  </ul>
+
+  <h3>Honest 3-D Collision</h3>
+  <p>The resolver first tests lane/depth proximity (tuned per shape), then a <strong>vertical gate</strong>: each
+  hazard declares the band of space it actually threatens, and the player carries a real body band — full height
+  2.0 grounded, <strong>1.6 tucked while airborne</strong> (knees up), 1.15 sliding. No overlap, no contact:</p>
+  <div class="codewrap"><span class="src">src/systems/CollisionSystem.js</span><span class="lang">JavaScript</span>
+<pre class="code">const HAZARD_SPAN = {
+  firePit: [0, 0.35],   boulder: [0.15, 1.55],  archGate: [1.6, 2.6],
+  brokenRoad: [-2.0, 0.5], evilSoul: [1.2, 2.0], cobra: [0, 1.35],  asura: [0, 1.75],
+};
+
+function playerBand() {
+  const bottom = state.playerY;
+  const height = state.isSliding ? 1.15 : (state.isGrounded ? 2.0 : 1.6);
+  return [bottom, bottom + height];
+}
+
+// inside resolveObstacleCollision, after the x/z proximity test:
+const span = HAZARD_SPAN[oType] || DEFAULT_SPAN;
+const [pBottom, pTop] = playerBand();
+if (pBottom >= span[1] || pTop <= span[0]) return 'none';   // vertically clear</pre></div>
+  <p>Before the gate, one special case runs: <strong>landing on a boulder</strong> — falling onto the shell's crown
+  (playerY ≥ standHeight − 0.35, descending) parks the player on top, re-arms the double jump, and remembers the
+  support so gravity resumes the moment it slides out from underfoot. Shield and stumble i-frames are checked after
+  the gate, so a clean dodge never wastes them. A 20-case regression matrix pins all of this down.</p>
+
+  <h3>The Obstacle Pool</h3>
+  <p>All seven builders × 3 instances = <strong>21 obstacles, built once at boot, never destroyed</strong>. Spawning
+  toggles <code>visible</code> and sets a position; despawn (z &gt; 8, behind the camera) toggles it back. The pool is
+  also the reason shader warm-up works — every material exists before the first frame.</p>
+</section>
+
+<!-- ================================================================ 6 -->
+<section id="powers">
+  <div class="divider">⚡</div>
+  <h2><span class="num">06</span>Divine Power System</h2>
+  <p class="lede">Two fully independent channels of divinity: the power you carry in your hand, and the
+  ultimate you charge with devotion.</p>
+
+  <h3>The Three Powers</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Power</th><th>Deity</th><th>Effect</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td><b>⚡ Sudarshan Chakra</b></td><td>Vishnu</td><td>Blasts the player's own lane</td>
+        <td>One spinning discus projectile down current lane; 25 u/s, 40-unit range, spins at 25 rad/s</td></tr>
+      <tr><td><b>🔱 Shiva's Trishul</b></td><td>Shiva</td><td>Purifies all three lanes</td>
+        <td>Three trident projectiles launched simultaneously at x = −2.2, 0, +2.2</td></tr>
+      <tr><td><b>🛡️ Vishnu's Shield</b></td><td>Vishnu</td><td>5.5 s of protection</td>
+        <td>Absorbs one hazard contact (destroying the hazard, +50×combo punya) and repels the Naga's strike</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Channel 1 — The Held Power (<kbd>E</kbd>)</h3>
+  <p>Chakra, trishul and shield <strong>pickups</strong> appear on the track — each one visibly <em>is</em> its power
+  (the discus with counter-rotating rings and teeth, the upright trident in cold blue so it never reads as gold at
+  speed, the tilted teal shield disc). Grabbing one puts that exact power <em>in hand</em>; the newest pickup
+  replaces the old. <kbd>E</kbd> (or Shift, or the POWER button) spends it. The Shakti bar is untouched throughout —
+  this channel is item-based, not energy-based.</p>
+
+  <h3>Channel 2 — The Shakti Ultimate (<kbd>C</kbd>)</h3>
+  <p>The Shakti bar starts every run at <strong>0</strong> and charges only from devotion:
+  <strong>Om glyphs +3</strong> and <strong>Rudraksha beads +12</strong> — never from power pickups. Below 100,
+  <kbd>C</kbd> refuses politely and spends nothing. At 100 the bar glows gold
+  (<em>🔥 ULTIMATE READY — PRESS C</em>) and <kbd>C</kbd> erupts <strong>one of the three powers at random</strong>,
+  draining the bar completely back to zero:</p>
+  <div class="codewrap"><span class="src">src/systems/PowerSystem.js</span><span class="lang">JavaScript</span>
+<pre class="code">const DIVINE_POWERS = ['sudarshan_chakra', 'trishul', 'vishnu_shield'];
+
+export function unleashUltimate() {
+  if (state.phase !== 'playing') return;
+  if (state.shakti < state.maxShakti) {
+    showBanner(`SHAKTI ${Math.floor(state.shakti)}/${state.maxShakti} — FILL THE BAR TO UNLEASH`, 1.2);
+    return;
+  }
+  state.shakti = 0;
+  executePower(DIVINE_POWERS[Math.floor(Math.random() * DIVINE_POWERS.length)]);
+}</pre></div>
+
+  <h3>Projectiles &amp; Hit Detection</h3>
+  <p>Projectiles come from their own pre-built pool. Each frame a live projectile advances along its direction,
+  spins, and box-tests every visible obstacle (|dx| &lt; 1.2, |dz| &lt; 1.4). A hit hides the obstacle, awards
+  <strong>+50 × combo punya</strong>, plays the blast, and bursts particles — a slain Asura gets his own
+  three-colour ember death burst. Projectiles retire at max range and return to the pool.</p>
+
+  <h3>VFX &amp; the Naga</h3>
+  <p>Every activation fires the sawtooth power cue and a burst from the 48-spark particle pool; banners announce the
+  power by name. And crucially: <strong>using any power while the Naga hunts resolves the chase instantly</strong> —
+  the serpent recoils, and the escape bonus is the larger one (+350 × combo).</p>
+</section>
+
+<!-- ================================================================ 7 -->
+<section id="naga">
+  <div class="divider">🐍</div>
+  <h2><span class="num">07</span>The Naga Chase</h2>
+  <p class="lede">The rival serpent is the game's pressure valve: it punishes sloppy runs, rewards clean
+  ones, and gives the divine powers a defensive job.</p>
+
+  <h3>What Summons It</h3>
+  <ul>
+    <li><strong>Scheduled hunts:</strong> every <strong>280 m</strong> of distance, the Naga rises regardless —
+    a rhythm of terror built into the pilgrimage.</li>
+    <li><strong>Path mistakes:</strong> every Zone 2 hit registers a mistake; <strong>2 mistakes</strong> summon it
+    early. A mistake-summoned chase starts further back (target z 9.0 vs 7.0) — it arrives when the devotee is
+    already hurt, so it must be survivable rather than an execution.</li>
+  </ul>
+
+  <h3>The Pursuit</h3>
+  <p>The serpent appears 16 units behind and closes continuously at <strong>0.8 m/s</strong> (eased with
+  <code>lerp(nagaZ, targetZ, 4·dt)</code>, swaying on a sine as it comes, mirroring 80% of the player's lane).
+  Every hazard <em>cleanly passed</em> during the chase shoves it back <strong>1.8 units</strong>; surviving
+  <strong>3</strong> obstacles resolves the chase (+250 × combo punya). Stumbling mid-chase resets that count to
+  zero and hands the serpent 2.5 units of ground.</p>
+
+  <h3>The Strike</h3>
+  <p>If it closes to <strong>z ≤ 1.7</strong> it bites: −1 life, 1.5 s stumble, camera shake 2.0, and the serpent
+  recoils to z 9 to build the dread again — or, on the last life, the run ends. An active Vishnu shield turns the
+  strike aside entirely and forces a retreat.</p>
+
+  <h3>Three Escapes</h3>
+  <ol>
+    <li><strong>Dodge cleanly</strong> — three passed hazards and it breaks off (+250×combo).</li>
+    <li><strong>Outlast it flawlessly</strong> — every clean pass buys 1.8 m of breathing room.</li>
+    <li><strong>Unleash divinity</strong> — any power (E or C) ends the chase on the spot (+350×combo).</li>
+  </ol>
+
+  <h3>How It Looks</h3>
+  <p>A single always-resident entity (hidden between hunts): a CatmullRom-swept tube body coiling low then rearing,
+  segmented mint belly plates, a flared iridescent emerald-violet hood, glowing amber eyes, white fangs and a forked
+  crimson tongue. Its idle menace is the same <code>swing()</code> vocabulary as everything else.</p>
+</section>
+
+<!-- ================================================================ 8 -->
+<section id="scoring">
+  <div class="divider">🪙</div>
+  <h2><span class="num">08</span>Collectibles &amp; Scoring</h2>
+  <p class="lede">One currency of merit — punya — fed by distance, devotion and combat, multiplied by combo
+  and by how far past Kailash you dare to walk.</p>
+
+  <h3>The Collectibles</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Pickup</th><th>Punya</th><th>Shakti</th><th>Other effects</th></tr></thead>
+    <tbody>
+      <tr><td><b>ॐ Om Glyph</b> — a spinning gold coin with the symbol canvas-drawn onto both faces</td>
+        <td class="mono">+10 × combo × mult</td><td class="mono">+3</td><td>the bread-crumb line of the path (one every ~8.5 m)</td></tr>
+      <tr><td><b>Rudraksha Bead</b> — furrowed seed in a gold halo, arriving in curved arcs of 3–5</td>
+        <td class="mono">+75 × combo × mult</td><td class="mono">+12</td><td><b>combo → min(6, +2)</b> and the 12 s combo timer refreshes — three effects in one bead</td></tr>
+      <tr><td><b>Power pickups</b> — chakra / trishul / shield</td><td class="mono">—</td><td class="mono">0 (by design)</td>
+        <td>puts that power in hand for <kbd>E</kbd>; offered in strict rotation so a run sees all three</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Every Punya Source</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Source</th><th>Formula</th></tr></thead>
+    <tbody>
+      <tr><td>Covering ground</td><td class="mono">+0.5 / metre × combo × eternalMult</td></tr>
+      <tr><td>Om glyph</td><td class="mono">+10 × combo × eternalMult</td></tr>
+      <tr><td>Rudraksha bead</td><td class="mono">+75 × combo × eternalMult</td></tr>
+      <tr><td>Hazard destroyed (projectile or shield)</td><td class="mono">+50 × combo</td></tr>
+      <tr><td>Naga escaped by dodging / by power</td><td class="mono">+250 / +350 × combo</td></tr>
+      <tr><td>Entering a new stage</td><td class="mono">+150 × stage (eternal leagues: +200 × mult)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Combo, Shakti, Persistence</h3>
+  <ul>
+    <li><strong>Combo:</strong> beads push the multiplier toward ×6; a 12-second decay timer resets it to ×1 when it
+    lapses. Everything punya-flavoured scales by it, which is why bead arcs are worth committing a line to.</li>
+    <li><strong>Shakti:</strong> the ultimate meter (§6) — 0→100, Om +3 / bead +12, drained to zero by <kbd>C</kbd>.
+    The HUD bar dims below 100 and glows gold at full.</li>
+    <li><strong>Eternal multiplier:</strong> ×2 on stepping past Kailash, +1 every further 1000 m — walk 5 km and
+    every Om is worth five.</li>
+    <li><strong>High score:</strong> best punya and best distance persist under the
+    <code>localStorage</code> key <code>naga-loka-runner:best</code>, loaded at boot, saved at run end, and
+    wrapped in try/catch so a sandboxed frame that blocks storage degrades to session records.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 9 -->
+<section id="spawning">
+  <div class="divider">⛰</div>
+  <h2><span class="num">09</span>Spawn System &amp; Difficulty Stages</h2>
+  <p class="lede">A distance-driven spawn director reading from a four-stage difficulty table — then
+  synthesising infinite "leagues" beyond the mountain.</p>
+
+  <h3>The Stage Table</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Stage</th><th>From</th><th>Spawn gap</th><th>Paired hazards</th><th>Interval pressure</th><th>Power orb every</th></tr></thead>
+    <tbody>
+      <tr><td><b>I · The Forest Path</b></td><td class="mono">0 m</td><td class="mono">18.0 m</td><td class="mono">0%</td><td class="mono">×1.00</td><td class="mono">80 m</td></tr>
+      <tr><td><b>II · The Serpent's Coils</b></td><td class="mono">500 m</td><td class="mono">15.5 m</td><td class="mono">18%</td><td class="mono">×0.85</td><td class="mono">68 m</td></tr>
+      <tr><td><b>III · The Burning Ghats</b></td><td class="mono">1000 m</td><td class="mono">13.5 m</td><td class="mono">30%</td><td class="mono">×0.72</td><td class="mono">58 m</td></tr>
+      <tr><td><b>IV · Kailash's Shadow</b></td><td class="mono">1500 m</td><td class="mono">12.0 m</td><td class="mono">42%</td><td class="mono">×0.62</td><td class="mono">50 m</td></tr>
+      <tr><td><b>∞ · Eternal League k</b></td><td class="mono">2000 m +500k</td><td class="mono">max(10.5, 12−0.25k)</td><td class="mono">min(50%, 42+2k)</td><td class="mono">max(0.5, 0.62−0.02k)</td><td class="mono">max(44, 50−k)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Each stage is announced with a banner, retints the moonlight to its mood (§10), and pays a crossing bonus.
+  The working gap also tightens slightly with speed: <code>max(10, stage.gap − (speed − 12) × 0.15)</code>.</p>
+
+  <h3>How Spawning Decides</h3>
+  <ol>
+    <li><strong>Type gating by distance</strong> — the first 300 m introduce the cast gradually: souls at 150 m,
+    asuras at 200 m, cobras at 250 m, broken slabs at 300 m.</li>
+    <li><strong>Forced intervals</strong> — signature hazards are guaranteed to reappear: an asura at least every
+    140 m, a slab every 250 m, a soul every 150 m, a cobra every 180 m — all multiplied by the stage's pressure
+    factor, so the guarantees tighten as the pilgrimage climbs. Otherwise the type is drawn uniformly from the
+    eligible list.</li>
+    <li><strong>Paired hazards</strong> — at the stage's dual chance, a second obstacle spawns at the same depth in a
+    <em>different</em> lane. Two of three lanes blocked always leaves a clean lane, plus the jump/slide answer on the
+    blocked ones — pressure without unfairness.</li>
+    <li><strong>Collectibles</strong> — an Om line every 8.5 m; bead arcs replace it with stage-scaled probability
+    (5% → 14%), swept as a lane-change curve or a jump arc that peaks exactly where a jumping player would be.</li>
+    <li><strong>Power pickups</strong> — cycled chakra → trishul → shield at the stage's cadence, so luck never
+    starves a run of one power.</li>
+  </ol>
+  <p>Everything spawns at <span class="mono">z = −62</span>, scrolls with the world, and recycles behind the camera
+  at <span class="mono">z = +8</span> — visibility toggles on a pre-built pool, zero allocation, zero GC spikes.</p>
+</section>
+
+<!-- ================================================================ 10 -->
+<section id="environment">
+  <div class="divider">🌙</div>
+  <h2><span class="num">10</span>Environment &amp; Visual Design</h2>
+  <p class="lede">A moonlit night in saffron and indigo: warm sacred stone against a cold sky, with the
+  destination always burning white on the horizon.</p>
+
+  <h3>The Snake Way Itself</h3>
+  <p><code>Track.js</code> builds <strong>7 ground segments of 12 units</strong> — each a 3×4 grid of beveled
+  sandstone slabs over a dark under-floor (so joints read as depth), twin <strong>glowing golden lane dividers</strong>
+  with fake light-spill strips, and mossy kerbs. Segments scroll toward the camera and wrap to the far end:
+  an infinite causeway from 84 units of geometry. Six Sanskrit inscription decals — the phrase
+  <em>श्रावणरत्मा</em> drawn to a canvas (Devanagari cannot be built from boxes) — recycle on their own 20-unit
+  rhythm so they never align with the slab grid.</p>
+
+  <h3>Scenery Pools</h3>
+  <p><code>Environment.js</code> pools temple pillars (vine-wrapped, carved), dark canopy trees, hanging vine
+  curtains, stone pedestals and <strong>torch braziers</strong> along both flanks — all built once,
+  <code>mergeStatic</code>-collapsed into a few draw calls each, and recycled by the same scroll-and-wrap pattern.</p>
+
+  <h3>Mount Kailash &amp; the Sky</h3>
+  <p>The destination is a four-sided pyramid (rock body + snow cap sized a whisker proud to kill z-fighting) with a
+  560-unit radial-gradient halo of divine light, flanked by lesser ridges so it sits in a range. The sky is a
+  <strong>custom shader dome</strong> grading near-black indigo overhead into warm horizon purple. Both opt out of
+  fog — which is what keeps the peak visible through the mist and creates the depth read: fogged path, clear
+  destination.</p>
+
+  <h3>Lighting</h3>
+  <ul>
+    <li><strong>Moonlight:</strong> one cool directional (#c8d8ff, 1.55) from top-left, the scene's only
+    shadow-caster, its shadow camera clamped tightly to the visible causeway.</li>
+    <li><strong>Ambient + hemisphere:</strong> a barely-there indigo ambient and a cool-sky/warm-ground hemisphere —
+    the reason shadowed sandstone still reads sand-coloured, not brown.</li>
+    <li><strong>The warm-light pool:</strong> exactly <strong>4 point lights</strong> for every flame in the world.
+    Each frame they park on the nearest visible torches/fire pits and flicker on sine phases; spares dim to zero
+    instead of being removed — because Three.js bakes the light <em>count</em> into every shader's cache key, and a
+    changing count means recompiling every material mid-run (§16).</li>
+    <li><strong>Stage moods:</strong> the moon lerps between five tints — cold forest blue, serpent green, ember,
+    pale summit light, eternal violet — colour-only, so the shader set never changes.</li>
+    <li><strong>Fog:</strong> exponential (<code>FogExp2</code>, density 0.018) — the mist that swallows the path a
+    few segments out and hides all spawning and recycling.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 11 -->
+<section id="ui">
+  <div class="divider">🪔</div>
+  <h2><span class="num">11</span>UI and HUD</h2>
+  <p class="lede">All DOM, all built in code, updated once per simulated frame with change-detection so the
+  browser never re-lays-out text that didn't change.</p>
+
+  <h3>The HUD Cards</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Element</th><th>Shows</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>🕉️ Punya</b></td><td>merit total + combo badge</td><td>badge appears only above ×1 ("✨ 6x PUNYA MULTIPLIER")</td></tr>
+      <tr><td><b>🏔️ To Mount Kailash</b></td><td>distance + progress bar</td><td>eternal mode swaps to <code>2340m · ×3 PUNYA</code></td></tr>
+      <tr><td><b>♥ Lives</b></td><td>♥♥♥ / ♥♥♡ / ♥♡♡</td><td>colour and glow shift as they drain</td></tr>
+      <tr><td><b>⚡ Shakti</b></td><td>0–100 bar + two truth lines</td><td>line 1: <code>ULTIMATE CHARGING 47/100</code> or gold <code>🔥 READY — PRESS C</code>; line 2: <code>🔱 TRISHUL IN HAND — PRESS E</code> or <code>NO POWER IN HAND</code></td></tr>
+    </tbody>
+  </table></div>
+  <p><code>updateHUD()</code> runs at the end of every simulation step but caches the last-shown value per element —
+  <code>textContent</code> is only touched when a floor()ed value actually changed.</p>
+
+  <h3>Banners</h3>
+  <p>One reusable announcement strip under the top cards. <code>showBanner(text, seconds)</code> handles power
+  names, stage announcements, Naga warnings, shakti prompts and eternal milestones; a stored timeout clears it and a
+  new banner pre-empts the old.</p>
+
+  <h3>Screens</h3>
+  <ul>
+    <li><strong>Start</strong> — title card with the full controls and both power systems documented; the button
+    calls <code>window.__startGame()</code>.</li>
+    <li><strong>Pause</strong> — <kbd>P</kbd>/<kbd>Esc</kbd> toggle, phase-guarded so it can't fire over other overlays.</li>
+    <li><strong>Ascension</strong> — the gates of Kailash: punya so far and two buttons, <em>ASCEND</em> vs
+    <em>WALK THE ETERNAL PATH</em>.</li>
+    <li><strong>Game Over / Victory</strong> — score breakdown, best-run comparison, retry; the death card relabels
+    itself <em>"Walked Beyond Kailash: 4210m · ×3 punya"</em> for eternal runs. All overlays share one fade helper.</li>
+  </ul>
+
+  <h3>Touch Controls</h3>
+  <p>Six on-screen buttons — ◀ ▶ lanes, SLIDE, JUMP, <strong>POWER (E)</strong>, <strong>ULT (C)</strong> — wired to
+  the same verb functions as the keyboard, plus swipe gestures on the canvas (horizontal = lane, up = jump,
+  down = slide). Mobile plays the identical game.</p>
+</section>
+
+<!-- ================================================================ 12 -->
+<section id="audio">
+  <div class="divider">🎵</div>
+  <h2><span class="num">12</span>Audio System</h2>
+  <p class="lede">Seventy-one lines, six cues, zero files: every sound is an oscillator envelope.</p>
+  <p>The Web Audio context is created lazily on the first cue (satisfying autoplay policy — the first sound follows a
+  user gesture) and resumed if suspended. Each cue is one oscillator, one gain envelope:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Cue</th><th>Waveform</th><th>Frequency shape</th><th>Fired by</th></tr></thead>
+    <tbody>
+      <tr><td><b>jump</b></td><td>sine</td><td class="mono">220 → 540 Hz over 0.18 s</td><td>jump &amp; double jump</td></tr>
+      <tr><td><b>om</b></td><td>triangle</td><td class="mono">C5 → E5 (523 → 659 Hz)</td><td>Om pickup, run start, eternal milestones</td></tr>
+      <tr><td><b>rudraksha</b></td><td>sine</td><td class="mono">A4→E5→A5 arpeggio steps</td><td>bead pickup, Naga escaped</td></tr>
+      <tr><td><b>power</b></td><td>sawtooth</td><td class="mono">180 → 720 Hz rising sweep</td><td>power pickup &amp; every cast</td></tr>
+      <tr><td><b>blast</b></td><td>square</td><td class="mono">140 → 40 Hz falling thud</td><td>hits, kills, deaths</td></tr>
+      <tr><td><b>hiss</b></td><td>sawtooth</td><td class="mono">800 → 300 Hz falling rasp</td><td>the Naga — summon, gain, strike</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Why no audio files?</strong> The whole project is a zero-asset build — meshes from math, textures from
+  canvas, audio from oscillators. Nothing to download, nothing to license, nothing to 404; the entire game works
+  from a text checkout. Each cue is also pitched to its meaning: devotion ascends (om, rudraksha rise), danger
+  descends (blast, hiss fall).</p>
+</section>
+
+<!-- ================================================================ 13 -->
+<section id="rules">
+  <div class="divider">📜</div>
+  <h2><span class="num">13</span>Game Rules &amp; How to Play</h2>
+  <p class="lede">Everything a new player needs on one page.</p>
+
+  <h3>The Rules</h3>
+  <ol>
+    <li>You run automatically, accelerating from 12 u/s (+0.5 every 200 m). Steer between three lanes; jump,
+    double-jump and slide to survive what the path throws at you.</li>
+    <li>You carry <strong>3 lives</strong>. Most hazards cost one and grant 1.5 s of stumble-invulnerability;
+    the <strong>sacred fire pit ends the run outright</strong> — and so does any hit on your last life.</li>
+    <li>Every stumble is a <em>path mistake</em>: two of them — or simply every 280 m — summon the
+    <strong>rival Naga</strong>. Survive 3 hazards cleanly, or spend a divine power, to escape it.</li>
+    <li>Collect Om glyphs and Rudraksha beads for punya, combo (up to ×6) and Shakti. Grab power pickups to hold a
+    divine weapon in hand.</li>
+    <li>At <strong>2000 m</strong> you reach the Gates of Kailash and choose: <strong>Ascend</strong> (victory) or
+    <strong>walk the Eternal Path</strong> — endless, crueller every league, all punya ×2 and deepening every
+    1000 m.</li>
+  </ol>
+
+  <h3>Controls</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Action</th><th>Keyboard</th><th>Touch</th></tr></thead>
+    <tbody>
+      <tr><td>Switch lane</td><td><kbd>A</kbd>/<kbd>D</kbd> or <kbd>←</kbd>/<kbd>→</kbd></td><td>◀ ▶ buttons, or swipe left/right</td></tr>
+      <tr><td>Jump / double jump</td><td><kbd>W</kbd>, <kbd>↑</kbd> or <kbd>Space</kbd> (press again mid-air)</td><td>JUMP button, or swipe up</td></tr>
+      <tr><td>Slide</td><td><kbd>S</kbd> or <kbd>↓</kbd></td><td>SLIDE button, or swipe down</td></tr>
+      <tr><td><b>Use held power</b></td><td><kbd>E</kbd> (also <kbd>Shift</kbd>)</td><td>POWER (E) button</td></tr>
+      <tr><td><b>Unleash Shakti ultimate</b></td><td><kbd>C</kbd> — full bar only</td><td>ULT (C) button</td></tr>
+      <tr><td>Pause</td><td><kbd>P</kbd> or <kbd>Esc</kbd></td><td>tap the Shakti card</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Cheat-Sheet: What Beats What</h3>
+  <p><strong>Jump:</strong> fire pit, boulder, broken slab, cobra, asura (near apex) · <strong>Slide:</strong> arch
+  gate, evil soul · <strong>Never slide into</strong> a cobra or an asura · <strong>Boulders</strong> can also be
+  ridden — land on top and the double jump re-arms.</p>
+
+  <h3>Strategy for High Scores</h3>
+  <ul>
+    <li><strong>Keep the combo alive.</strong> ×6 turns 0.5/m into 3/m — bead arcs are worth a risky line.</li>
+    <li><strong>Bank the ultimate for the Naga.</strong> A power-escape pays +350×combo — at ×6 that's 2,100 punya.</li>
+    <li><strong>Hold the shield for late stages</strong>, where 42–50% paired spawns make raw dodging expensive.</li>
+    <li><strong>Walk the Eternal Path.</strong> The multiplier compounds: league punya dwarfs the pilgrimage itself.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ 14 -->
+<section id="math">
+  <div class="divider">∑</div>
+  <h2><span class="num">14</span>Key Algorithms &amp; Math</h2>
+  <p class="lede">The handful of formulas the whole game stands on.</p>
+
+  <h3>The Sinusoidal Gait Vocabulary</h3>
+  <div class="codewrap"><span class="src">src/utils/AnimationHelper.js</span><span class="lang">JavaScript</span>
+<pre class="code">export function swing(angle, amp)        { return Math.sin(angle) * amp; }          // full limb swing
+export function swingOpposed(angle, amp) { return -Math.sin(angle) * amp; }         // the other leg
+export function swingForward(angle, amp) { return Math.max(0, Math.sin(angle) * amp); } // knees bend one way
+export function bounce(angle, amp)       { return Math.abs(Math.sin(angle)) * amp; }    // two footfalls per cycle</pre></div>
+  <p>Every character in the game — devotee, asura, cobra, naga, souls — animates from these four functions with
+  phase offsets. Opposite limbs are <code>t</code> vs <code>t + π</code>; the shin trails the thigh by 0.55 rad;
+  <code>bounce</code> gives the body two dips per stride because a run has two footfalls per cycle.</p>
+
+  <h3>Symplectic Euler Jump — and the 13.3248 Story</h3>
+  <div class="codewrap"><span class="src">src/entities/Player.js</span><span class="lang">JavaScript</span>
+<pre class="code">// per sub-step:
+state.playerVY += CONFIG.GRAVITY * dt;    // -34 u/s²  (velocity first…)
+state.playerY  += state.playerVY * dt;    // …then position: symplectic Euler</pre></div>
+  <p>Updating velocity before position makes the integrator <em>symplectic</em> — energy-stable, but it undershoots
+  the analytic apex by exactly <code>v₀·dt/2</code> (≈0.11 units at 60 fps). The analytic impulse for a 2.5-unit
+  apex is <code>√(2·34·2.5) = 13.04</code>; the shipped <strong>13.3248</strong> compensates for the integrator, so
+  the <em>observed</em> peak is 2.5. Total airtime ≈ 0.78 s — comfortably longer than any hazard's 0.07–0.16 s
+  pass-through window, which is the mathematical guarantee behind "a well-timed jump always fits".</p>
+
+  <h3>Frame-rate-safe Lerp (lanes, camera, speed, Naga)</h3>
+  <div class="codewrap"><span class="lang">JavaScript</span>
+<pre class="code">state.playerX = THREE.MathUtils.lerp(state.playerX, state.targetX, CONFIG.LANE_SWITCH_SPEED * dt); // rate 15</pre></div>
+  <p>Exponential approach: each second removes a fixed <em>fraction</em> of the remaining distance, so the swoop
+  decelerates naturally into the target lane. The same one-liner (different rates) drives the camera (8–10), the
+  speed ramp (2.6), the Naga's pursuit (4), and every pose transition (<code>approach()</code>, rates 12–14).</p>
+
+  <h3>The Evil Soul Drift</h3>
+  <div class="codewrap"><span class="src">src/entities/EvilSoul.js</span><span class="lang">JavaScript</span>
+<pre class="code">obs.position.x = baseX + swing(time * 1.5 + phase, LANE_WIDTH * 0.5);  // ±1.1 units of lateral drift
+obs.position.y = 0.3   + swing(time * 3.0, 0.3);                        // bobbing at double rate</pre></div>
+  <p>Two incommensurate sine rates make the motion feel alive rather than mechanical; each soul carries a random
+  phase so two on screen never move in lockstep.</p>
+
+  <h3>IoU Silhouette Matching (development-time)</h3>
+  <p>During the character build, every sculpt iteration was rendered and compared against the reference art by
+  <strong>intersection-over-union of binary silhouettes</strong>, normalised to equal height:
+  <code>IoU = |A∩B| / |A∪B|</code>, plus a 40-band width profile that localised <em>where</em> the model was too
+  thin. This turned art direction into measurement: 0.68 → 0.77 (mask cleanup) → 0.81 (measured widening) — and a
+  proposed change that <em>felt</em> right but measured 0.72 was rejected on the number.</p>
+
+  <h3>Difficulty Scaling</h3>
+  <div class="codewrap"><span class="src">src/systems/SpawnSystem.js</span><span class="lang">JavaScript</span>
+<pre class="code">// working spawn gap: the stage's base, tightened slightly by current speed
+nextObstacleDist = state.distance + Math.max(10.0, stage.gap - (state.speed - CONFIG.BASE_SPEED) * 0.15);
+
+// beyond Kailash, leagues synthesise forever with asymptotic floors:
+gap      = Math.max(10.5, 12.0 - k * 0.25);
+dual     = Math.min(0.5,  0.42 + k * 0.02);
+pressure = Math.max(0.5,  0.62 - k * 0.02);</pre></div>
+  <p>Every scaling curve approaches a floor or ceiling asymptotically — difficulty always rises, but reaction time
+  never falls below human.</p>
+</section>
+
+<!-- ================================================================ 15 -->
+<section id="journey">
+  <div class="divider">🛕</div>
+  <h2><span class="num">15</span>Development Journey</h2>
+  <p class="lede">From a four-file AI export to a measured, tested, staged pilgrimage.</p>
+
+  <h3>Origins &amp; Reorganisation</h3>
+  <p>The game began as a <strong>Crayon Game Builder export</strong>: four flat files
+  (<code>game-assets-v2.js</code>, <code>game-main-v2.js</code>, <code>game-state-v2.js</code>,
+  <code>game-ui-v2.js</code>) and an <code>index.html</code> carrying the engine. It was rebuilt into the current
+  <strong>29-module ES architecture</strong> with zero logic changes first — structure before features — then every
+  system was reworked in place. The split surfaced real bugs of its own (a duplicate export that blocked boot,
+  variables orphaned between files) which seeded the testing culture below.</p>
+
+  <h3>The Character Pipeline</h3>
+  <p>The hero went through three complete generations:</p>
+  <ol>
+    <li><strong>Primitive assembly</strong> — the original box-and-cylinder figure; readable, robotic.</li>
+    <li><strong>img2threejs reconstruction</strong> — a staged, quality-gated pipeline measured a character reference
+    sheet (pixel-profiled landmarks: 7.9 head-units, hip at exactly half height), produced a validated sculpt spec
+    and a generated factory. Its blockout supplied the measured <em>skeleton</em> — and its review gates supplied
+    the IoU discipline (§14).</li>
+    <li><strong>SDF sculpt</strong> — the shipped body: blended signed-distance anatomy → marching cubes → one
+    seamless mesh → custom skinning (nearest-bone with blending permitted only between anatomically adjacent bones —
+    the fix for auto-skinning's smeared shoulders). The Asura was rebuilt with the same engine, war paint baked into
+    vertex colours.</li>
+  </ol>
+
+  <h3>Bugs Worth Remembering</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Bug</th><th>Root cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Mid-run freezes (0.5–1.6 s)</td><td>shader compilation on first appearance of pooled hazards</td>
+        <td>full-scene <code>compileAsync</code> warm-up behind the splash</td></tr>
+      <tr><td>Permanent micro-stutter on 144 Hz</td><td>fixed 60 Hz step: only 42% of frames moved the world</td>
+        <td>variable timestep with bounded sub-steps (§3)</td></tr>
+      <tr><td>Recompile hitches near fire</td><td>light <em>count</em> is baked into Three.js shader cache keys</td>
+        <td>fixed pool of 4 warm lights, parked on nearest flames, spares dimmed not removed</td></tr>
+      <tr><td>"I jumped over it and still died"</td><td>collision tested only x/z — height was special-cased for 3 of 7 types</td>
+        <td>per-hazard vertical spans + a real player body band (§5)</td></tr>
+      <tr><td>Paper-thin slide</td><td>slide scaled the whole rig to <code>scale.y = 0.5</code></td>
+        <td>hip-drop pose on the bones; scale never touched</td></tr>
+      <tr><td>Slider sank underground</td><td>pose eased toward a base the drop was subtracted from — a feedback loop with equilibrium 1.8 units below the road</td>
+        <td>absolute pose write; the drop keeps its own easing</td></tr>
+      <tr><td>Jump apex 2.39 not 2.5</td><td>symplectic Euler undershoot <code>v₀·dt/2</code></td>
+        <td>impulse solved as 13.3248 (§14)</td></tr>
+      <tr><td>Full Shakti bar, "collect orb first"</td><td>power un-equipped below one cast; only orbs re-equipped</td>
+        <td>redesigned into the two independent E/C systems (§6)</td></tr>
+      <tr><td>Hidden double bead grant</td><td>a hard-coded +15 shakti buried mid-function, undocumented by any constant</td>
+        <td>one line, one named constant</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The Testing Approach</h3>
+  <p>Every gameplay system ships with a headless regression suite in <code>devtools/tests/</code> — each boots the
+  <em>real game</em> in headless Chrome and asserts against the live modules:</p>
+  <ul>
+    <li><code>collisiontest.mjs</code> — the 20-case fairness matrix: every hazard × run/jump/slide, land-on-boulder,
+    lane isolation, and the wrong-move cases.</li>
+    <li><code>stagetest.mjs</code> — sweeps 400 m of each stage measuring real spawn gaps and dual rates against the
+    table; plus the full two-system power contract, including randomness (15 unleashes must produce ≥2 distinct
+    powers, bar drained to exactly 0 every time) driven through the real keyboard events.</li>
+    <li><code>eternaltest.mjs</code> — 17 checks across the whole Kailash lifecycle: both gate choices, multiplier
+    deepening, league banners, the eternal death card, both restart paths.</li>
+    <li><code>runtest.mjs</code> — live gameplay: boot → play → trigger a real slide via the input path → verify the
+    mid-slide numbers and the recovery, capturing pixels and state <em>in the same JS tick</em>.</li>
+    <li><code>playertest.mjs</code> — rig integrity: the parts contract, and skinned-<em>vertex</em> deformation per
+    bone (a bone that stops moving geometry fails loudly).</li>
+    <li><code>preview.mjs</code> — renders hero or demon alone for art direction.</li>
+  </ul>
+  <p>Earlier phases also used a Node <code>vm.SourceTextModule</code> harness with stubbed THREE (148 assertions
+  across 5 suites), fuzz testing of the input verbs, and CDP-driven play-throughs — the guards in entity code
+  (<code>if (typeof geo.translate === 'function')</code>) are its legacy.</p>
+</section>
+
+<!-- ================================================================ 16 -->
+<section id="performance">
+  <div class="divider">⚙</div>
+  <h2><span class="num">16</span>Performance Considerations</h2>
+  <p class="lede">The budget philosophy: pay everything once at boot, then never allocate, never compile,
+  never surprise the frame.</p>
+
+  <div class="statgrid">
+    <div class="stat"><div class="v">0</div><div class="l">allocations / frame</div></div>
+    <div class="stat"><div class="v">21</div><div class="l">pooled obstacles</div></div>
+    <div class="stat"><div class="v">48</div><div class="l">pooled FX sparks</div></div>
+    <div class="stat"><div class="v">4</div><div class="l">point lights, ever</div></div>
+    <div class="stat"><div class="v">~95 k</div><div class="l">hero triangles</div></div>
+    <div class="stat"><div class="v">11</div><div class="l">meshes per demon</div></div>
+  </div>
+
+  <h3>Pooling Everywhere</h3>
+  <p>Obstacles (21), Om glyphs (18), beads (12), power pickups (6), projectiles, FX sparks (48), ground segments (7),
+  inscriptions (6), pillars/trees/torches/curtains — every dynamic object is pre-instantiated at boot and recycled by
+  toggling <code>visible</code>. Hot loops reuse module-level scratch <code>Vector3</code>s. The steady-state frame
+  performs <strong>zero allocations</strong>, so the GC has nothing to collect and no excuse to pause mid-run.</p>
+
+  <h3>Why Pre-Instantiation (and not lazy creation)</h3>
+  <p>Three reasons, in order of pain: (1) first-use <strong>shader compilation</strong> — a material that first
+  renders mid-run freezes the frame for hundreds of milliseconds, so every material must exist for the boot-time
+  <code>compileAsync</code> warm-up to find; (2) GC spikes from geometry churn; (3) deterministic memory — the game's
+  footprint at minute 30 is its footprint at second 3.</p>
+
+  <h3>Draw Calls &amp; Triangles</h3>
+  <p><code>mergeStatic()</code> collapses each static prop to one mesh per material (a temple pillar was 18 draw
+  calls, a ground segment 31 — merging more than halved a scene that had reached ~1200 visible meshes). Character
+  accessories are baked per bone, per material — the demon dropped from 36 meshes to <strong>11</strong>, and pooled
+  demons share geometry via <code>SkeletonUtils.clone</code>. The hero is 2 skinned meshes + a handful of accessory
+  meshes; skinning runs on the GPU. Fire flames opt out of merging (<code>noMerge</code>) because they animate.</p>
+
+  <h3>The Light Budget</h3>
+  <p>The subtlest constraint in the codebase: Three.js bakes the point-light <em>count</em> into every shader's
+  cache key. Nine lights (six torches + three fire pits) once meant both a per-pixel cost and — far worse — a full
+  shader recompile whenever a pooled pit toggled. The fix is architectural: a <strong>fixed pool of four</strong>
+  warm lights that are parked each frame on the nearest visible flames, with spares dimmed to zero intensity —
+  because a zero-intensity light still counts toward the cache key and keeps the program set stable forever.</p>
+
+  <h3>Keeping the Loop Lean</h3>
+  <ul>
+    <li>HUD writes are change-detected; DOM is touched only when a displayed integer actually changes.</li>
+    <li>The shadow camera is clamped to the visible causeway — distant trees never enter the shadow pass.</li>
+    <li>Fog doubles as a culling ally: spawn (z −62) and recycle (z +8) both happen invisibly.</li>
+    <li>Baked vertex AO and painted soles/war-paint deliver surface richness with zero runtime cost.</li>
+    <li>The camera eases on real frame time outside the sub-step loop — presentation stays 144 Hz-smooth even when
+    simulation subdivides.</li>
+  </ul>
+</section>
+
+<footer>
+  <div class="om">ॐ</div>
+  <p><strong>Naga Loka Runner — Saiyan Through the Snake Way</strong></p>
+  <div class="links">
+    <a href="https://github.com/Itsagar086/warrior_run" target="_blank" rel="noopener">⭐ GitHub Repository</a>
+    <a href="https://warrior-run.vercel.app" target="_blank" rel="noopener">🎮 Play the Live Game</a>
+  </div>
+  <p class="fine">Game design document · generated from a complete read of the 6,658-line source tree ·
+  Three.js 0.184 · 100% procedural assets · ॥ शुभ यात्रा ॥</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+// Tiny self-contained syntax highlighter for the code blocks. Order matters:
+// comments and strings are captured first so keywords inside them stay plain.
+(function () {
+  var KEYWORDS = /\b(const|let|var|function|return|if|else|for|while|of|in|new|export|import|from|typeof|break|continue|null|true|false|undefined|this|class|extends|async|await)\b/g;
+  document.querySelectorAll('pre.code').forEach(function (block) {
+    var src = block.textContent;
+    var out = '';
+    var tokens = src.split(/(\/\/[^\n]*|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/);
+    tokens.forEach(function (tok) {
+      if (!tok) return;
+      var esc = tok.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (/^\/\//.test(tok)) { out += '<span class="c">' + esc + '</span>'; return; }
+      if (/^[`'"]/.test(tok)) { out += '<span class="s">' + esc + '</span>'; return; }
+      esc = esc
+        .replace(KEYWORDS, '<span class="k">$1</span>')
+        .replace(/\b(\d+\.?\d*)\b/g, '<span class="n">$1</span>')
+        .replace(/\b([A-Za-z_$][\w$]*)(?=\()/g, '<span class="f">$1</span>');
+      out += esc;
+    });
+    block.innerHTML = out;
+  });
+})();
+</script>
+</body>
+</html>
