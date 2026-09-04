@@ -280,6 +280,9 @@ export function updateObstacles(dt, scrollDelta) {
       } else if (oType === 'cobra') {
         // -z is still ahead of the player, so distance shrinks as it nears
         updateCobra(obs, scrollDelta, clock, -obs.position.z);
+      } else if (oType === 'boulder') {
+        // Boulder rolls TOWARD the player: world scroll + its own charging speed
+        obs.position.z += scrollDelta + 4.5 * dt;
       } else {
         obs.position.z += scrollDelta;
       }

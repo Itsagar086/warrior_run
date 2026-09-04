@@ -6,84 +6,204 @@ import * as THREE from 'three';
 import { mergeStatic } from '../utils/MeshMerge.js';
 import { SKY_TOP_COLOR, SKY_HORIZON_COLOR, makeRadialGlowTexture, getFlickerTime } from './Lighting.js';
 
-// ===== ASSET id=mount-kailash-peak label="Mount Kailash Distant Peak" role=scenery =====
+// ===== ASSET id=ram-mandir-temple label="Ram Mandir Temple" role=scenery =====
 function makeMountKailash() {
-  // ART DIRECTION: silhouette = a great four-sided white pyramid peak standing
-  // alone on the horizon; signature = snow-bright faces, a soft blue-white halo
-  // of divine light around it, lesser ridges falling away at its feet.
-  // Everything here opts out of fog so the peak stays visible through the mist.
-  const kailash = new THREE.Group();
+  // ART DIRECTION: silhouette = the grand Ram Mandir of Ayodhya on the horizon,
+  // a three-shikhara Nagara-style temple glowing with divine warmth; the central
+  // shikhara (tower) dominates, flanked by two smaller ones; mandapa (pillared
+  // hall) in front; a broad stepped platform (jagati) at the base; everything
+  // fog-exempt so it stays visible through the mist. This is the pilgrim's
+  // destination — the sacred abode of Lord Ram.
+  const mandir = new THREE.Group();
 
-  const rockMat = new THREE.MeshStandardMaterial({
-    color: 0xc3cde4,
-    roughness: 0.95,
-    metalness: 0.0,
-    flatShading: true,
-    fog: false
+  // ----- materials -----
+  const sandstoneMat = new THREE.MeshStandardMaterial({
+    color: 0xe8c78a, roughness: 0.82, metalness: 0.02, flatShading: true, fog: false
   });
-  const ridgeMat = new THREE.MeshStandardMaterial({
-    color: 0x49536f,
-    roughness: 1.0,
-    flatShading: true,
-    fog: false
+  const sandstoneLight = new THREE.MeshStandardMaterial({
+    color: 0xf5dca8, roughness: 0.78, metalness: 0.02, flatShading: true, fog: false
   });
-  const snowMat = new THREE.MeshStandardMaterial({
-    color: 0xf7faff,
-    emissive: 0xc3daff,
-    emissiveIntensity: 0.6,
-    roughness: 0.55,
-    flatShading: true,
-    fog: false
+  const sandstoneDark = new THREE.MeshStandardMaterial({
+    color: 0xc6a060, roughness: 0.88, metalness: 0.02, flatShading: true, fog: false
+  });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xff9500, emissiveIntensity: 0.8,
+    roughness: 0.3, metalness: 0.6, flatShading: true, fog: false
+  });
+  const goldBright = new THREE.MeshStandardMaterial({
+    color: 0xffe44d, emissive: 0xffaa00, emissiveIntensity: 1.2,
+    roughness: 0.2, metalness: 0.7, fog: false
+  });
+  const domeMat = new THREE.MeshStandardMaterial({
+    color: 0xf0d090, emissive: 0xdaa520, emissiveIntensity: 0.35,
+    roughness: 0.65, metalness: 0.1, flatShading: true, fog: false
   });
 
-  // Four-sided pyramid body. Bigger and nearer than before: it is the
-  // destination, so it should dominate the end of the path.
-  const body = new THREE.Mesh(new THREE.ConeGeometry(150, 195, 4), rockMat);
-  body.rotation.y = Math.PI / 4;
-  body.position.set(0, 78, 0);
-  kailash.add(body);
+  // ----- jagati (stepped platform base) -----
+  const PLAT_W = 280, PLAT_D = 180;
+  for (let step = 0; step < 4; step++) {
+    const shrink = step * 12;
+    const h = 6;
+    const mat = step % 2 === 0 ? sandstoneMat : sandstoneLight;
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(PLAT_W - shrink, h, PLAT_D - shrink), mat);
+    plat.position.set(0, step * h + h / 2, 0);
+    mandir.add(plat);
+  }
+  const platTop = 24;
 
-  // Snow-capped summit
-  // Sized to sit a whisker proud of the rock at every height. Matching the
-  // body's profile exactly made the two surfaces coincident, and the peak's
-  // edge z-fought into a staircase.
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(116, 151, 4), snowMat);
-  cap.rotation.y = Math.PI / 4;
-  cap.position.set(0, 101, 0);
-  kailash.add(cap);
+  // ----- garbhagriha (sanctum body) -----
+  const BODY_W = 120, BODY_H = 65, BODY_D = 90;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(BODY_W, BODY_H, BODY_D), sandstoneMat);
+  body.position.set(0, platTop + BODY_H / 2, 0);
+  mandir.add(body);
 
-  // Soft blue-white halo of divine light. A radial falloff plane rather than a
-  // sphere: an unlit sphere at this distance just reads as a hard flat disc.
+  // Horizontal moulding bands on the body (3 tiers)
+  for (let i = 0; i < 3; i++) {
+    const bandY = platTop + 18 + i * 18;
+    const band = new THREE.Mesh(new THREE.BoxGeometry(BODY_W + 4, 3, BODY_D + 4), sandstoneDark);
+    band.position.set(0, bandY, 0);
+    mandir.add(band);
+  }
+
+  // ----- central shikhara (main tower - Nagara curvilinear) -----
+  // Built as stacked, shrinking octagonal tiers to approximate the curved profile
+  const SHIK_BASE = 48, SHIK_H = 130, SHIK_TIERS = 14;
+  for (let t = 0; t < SHIK_TIERS; t++) {
+    const frac = t / SHIK_TIERS;
+    // Parabolic taper: wide at base, curving inward toward the top
+    const radius = SHIK_BASE * (1 - frac * frac) * 0.5;
+    const tierH = SHIK_H / SHIK_TIERS;
+    const tier = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius * 0.88, radius, tierH, 8),
+      t % 3 === 0 ? sandstoneLight : sandstoneMat
+    );
+    tier.position.set(0, platTop + BODY_H + t * tierH + tierH / 2, 0);
+    mandir.add(tier);
+  }
+
+  // Amalaka (ribbed disc at the top of the shikhara)
+  const amalakaY = platTop + BODY_H + SHIK_H;
+  const amalaka = new THREE.Mesh(new THREE.CylinderGeometry(10, 12, 6, 16), goldMat);
+  amalaka.position.set(0, amalakaY + 3, 0);
+  mandir.add(amalaka);
+
+  // Kalasha (golden pot finial)
+  const kalasha = new THREE.Mesh(new THREE.SphereGeometry(5, 12, 10), goldBright);
+  kalasha.position.set(0, amalakaY + 12, 0);
+  mandir.add(kalasha);
+  const spike = new THREE.Mesh(new THREE.ConeGeometry(2, 14, 8), goldBright);
+  spike.position.set(0, amalakaY + 22, 0);
+  mandir.add(spike);
+
+  // ----- flanking shikharas (smaller, same profile) -----
+  [-70, 70].forEach(xOff => {
+    const FLANK_BASE = 30, FLANK_H = 85, FLANK_TIERS = 10;
+    for (let t = 0; t < FLANK_TIERS; t++) {
+      const frac = t / FLANK_TIERS;
+      const radius = FLANK_BASE * (1 - frac * frac) * 0.5;
+      const tierH = FLANK_H / FLANK_TIERS;
+      const tier = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.88, radius, tierH, 8),
+        t % 3 === 0 ? sandstoneLight : sandstoneMat
+      );
+      tier.position.set(xOff, platTop + BODY_H * 0.6 + t * tierH + tierH / 2, 0);
+      mandir.add(tier);
+    }
+    // Flanking amalaka + kalasha
+    const fAmY = platTop + BODY_H * 0.6 + FLANK_H;
+    const fAm = new THREE.Mesh(new THREE.CylinderGeometry(6, 8, 4, 12), goldMat);
+    fAm.position.set(xOff, fAmY + 2, 0);
+    mandir.add(fAm);
+    const fKal = new THREE.Mesh(new THREE.SphereGeometry(3.5, 10, 8), goldBright);
+    fKal.position.set(xOff, fAmY + 8, 0);
+    mandir.add(fKal);
+    const fSpk = new THREE.Mesh(new THREE.ConeGeometry(1.5, 10, 6), goldBright);
+    fSpk.position.set(xOff, fAmY + 15, 0);
+    mandir.add(fSpk);
+  });
+
+  // ----- mandapa (pillared entrance hall, front of sanctum) -----
+  const MAND_W = 80, MAND_H = 40, MAND_D = 50;
+  const mandapa = new THREE.Mesh(new THREE.BoxGeometry(MAND_W, MAND_H, MAND_D), sandstoneLight);
+  mandapa.position.set(0, platTop + MAND_H / 2, BODY_D / 2 + MAND_D / 2 - 8);
+  mandir.add(mandapa);
+
+  // Mandapa dome (smaller shikhara over the hall)
+  const MDOME_TIERS = 7, MDOME_H = 50, MDOME_BASE = 28;
+  for (let t = 0; t < MDOME_TIERS; t++) {
+    const frac = t / MDOME_TIERS;
+    const radius = MDOME_BASE * (1 - frac * frac) * 0.5;
+    const tierH = MDOME_H / MDOME_TIERS;
+    const tier = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius * 0.85, radius, tierH, 8),
+      domeMat
+    );
+    tier.position.set(0, platTop + MAND_H + t * tierH + tierH / 2, BODY_D / 2 + MAND_D / 2 - 8);
+    mandir.add(tier);
+  }
+
+  // Mandapa pillars (4 pairs along the front)
+  for (let col = 0; col < 4; col++) {
+    const px = -30 + col * 20;
+    for (const dz of [0, MAND_D - 10]) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3, MAND_H - 4, 8), sandstoneDark);
+      pillar.position.set(px, platTop + (MAND_H - 4) / 2, BODY_D / 2 + dz - 4);
+      mandir.add(pillar);
+    }
+  }
+
+  // ----- entrance arched doorway (torana) -----
+  const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(22, 32, 4), sandstoneDark);
+  doorFrame.position.set(0, platTop + 16, BODY_D / 2 + MAND_D - 10);
+  mandir.add(doorFrame);
+  const doorVoid = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 6), new THREE.MeshStandardMaterial({
+    color: 0x1a0f06, roughness: 1.0, fog: false
+  }));
+  doorVoid.position.set(0, platTop + 14, BODY_D / 2 + MAND_D - 10);
+  mandir.add(doorVoid);
+
+  // ----- stairs leading up to the mandapa -----
+  for (let s = 0; s < 8; s++) {
+    const stair = new THREE.Mesh(
+      new THREE.BoxGeometry(40, 3, 8),
+      s % 2 === 0 ? sandstoneMat : sandstoneLight
+    );
+    stair.position.set(0, platTop - (8 - s) * 3 + 1.5, BODY_D / 2 + MAND_D + s * 6);
+    mandir.add(stair);
+  }
+
+  // ----- side pavilions (smaller gopurams at corners of the platform) -----
+  [[-120, -60], [120, -60], [-120, 60], [120, 60]].forEach(([cx, cz]) => {
+    const pav = new THREE.Mesh(new THREE.BoxGeometry(20, 25, 20), sandstoneMat);
+    pav.position.set(cx, platTop + 12.5, cz);
+    mandir.add(pav);
+    const pavDome = new THREE.Mesh(new THREE.ConeGeometry(12, 20, 8), domeMat);
+    pavDome.position.set(cx, platTop + 35, cz);
+    mandir.add(pavDome);
+    const pavKal = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 6), goldBright);
+    pavKal.position.set(cx, platTop + 48, cz);
+    mandir.add(pavKal);
+  });
+
+  // ----- divine golden halo behind the temple -----
   const glowTex = makeRadialGlowTexture(
-    'rgba(205, 228, 255, 0.55)', 'rgba(150, 195, 255, 0.18)', 'rgba(110, 165, 255, 0.0)'
+    'rgba(255, 215, 100, 0.55)', 'rgba(255, 170, 50, 0.20)', 'rgba(255, 140, 0, 0.0)'
   );
   if (glowTex) {
     const halo = new THREE.Mesh(
-      new THREE.PlaneGeometry(560, 560),
+      new THREE.PlaneGeometry(600, 600),
       new THREE.MeshBasicMaterial({
-        map: glowTex,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        fog: false
+        map: glowTex, transparent: true, opacity: 0.55,
+        depthWrite: false, blending: THREE.AdditiveBlending, fog: false
       })
     );
-    halo.position.set(0, 122, 8);
+    halo.position.set(0, 130, -10);
     halo.renderOrder = -1;
-    kailash.add(halo);
+    mandir.add(halo);
   }
 
-  // Lesser ridges either side so the peak sits in a range, not on a plain
-  [[-255, 0.62, 70], [265, 0.54, 95], [-390, 0.44, 130]].forEach(([x, s, z]) => {
-    const ridge = new THREE.Mesh(new THREE.ConeGeometry(165 * s, 105 * s, 4), ridgeMat);
-    ridge.rotation.y = Math.PI / 4;
-    ridge.position.set(x, 50 * s, z);
-    kailash.add(ridge);
-  });
-
-  kailash.userData.role = 'scenery';
-  return kailash;
+  mandir.userData.role = 'scenery';
+  return mandir;
 }
 // ===== END ASSET =====
 

@@ -126,7 +126,7 @@ export function initHUD(root) {
   `;
   distCard.innerHTML = `
     <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4de0c0; font-weight: 700;">
-      🏔️ TO MOUNT KAILASH
+      🙏 TO RAM MANDIR
     </div>
     <div id="hud-dist-val" style="font-size: 18px; font-weight: 800; color: #ffffff;">
       0m / 2000m

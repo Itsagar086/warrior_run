@@ -16,7 +16,7 @@ import { initPowerSystem, updateProjectiles, resetProjectiles } from '../systems
 import { createTrack, updateTrack } from '../environment/Track.js';
 import { createEnvironment, updateEnvironment } from '../environment/Environment.js';
 
-import { createPlayer, updatePlayer, setShieldVisible, resetPlayerTrail } from '../entities/Player.js';
+import { createPlayer, updatePlayer, setShieldVisible, resetPlayerTrail, animateBow } from '../entities/Player.js';
 import { createObstaclePool } from '../entities/Obstacles.js';
 import { createNaga, triggerNagaChase, updateNaga, hideNaga } from '../entities/NagaChaser.js';
 
@@ -157,12 +157,13 @@ function updateSimulation(dt) {
   // Base Punya score climbs with distance
   addDistancePunya(scrollDelta);
 
-  // Distance Goal Check (2000m to Kailash). Reaching the mountain is a
-  // CHOICE now: ascend and complete the pilgrimage, or walk the Eternal Path
-  // beyond it - an endless run with deepening stages and multiplied punya.
-  if (!state.eternal && state.distance >= CONFIG.KAILASH_DISTANCE) {
-    state.phase = 'ascension';
-    showAscension(state.punya);
+  // Distance Goal Check (2000m to Ram Mandir). Reaching the temple triggers
+  // a pranam (bowing) sequence before the ascension choice appears.
+  if (!state.eternal && state.distance >= CONFIG.KAILASH_DISTANCE && state.phase === 'playing') {
+    state.phase = 'bowing';
+    bowTimer = 2.8;
+    playSound('om');
+    showBanner('🙏 जय श्री राम — JAI SHRI RAM! 🙏', 2.8);
     return;
   }
   // Beyond Kailash, every 1000m walked deepens the blessing.
@@ -241,7 +242,7 @@ window.__startGame = function() {
   resetPlayerTrail();
 
   playSound('om');
-  showBanner('ASCENDING THE SNAKE WAY TO KAILASH!', 2.5);
+  showBanner('🙏 WALKING THE SACRED PATH TO RAM MANDIR!', 2.5);
 };
 
 window.__restartGame = function() {
@@ -282,6 +283,7 @@ window.__walkEternalPath = function() {
 const MAX_SUB_STEP = 1 / 30;
 const MAX_CATCH_UP_STEPS = 4;
 let lastFrameTime = performance.now();
+let bowTimer = 0;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -307,6 +309,17 @@ function animate() {
     // Update simulation when active
     if (state.phase === 'playing') {
       updateSimulation(dt);
+    }
+
+    // Bowing phase: the pilgrim kneels and bows to Ram Mandir before the
+    // ascension overlay appears. The world stays still; only the pose plays.
+    if (state.phase === 'bowing') {
+      animateBow(dt);
+      bowTimer -= dt;
+      if (bowTimer <= 0) {
+        state.phase = 'ascension';
+        showAscension(state.punya);
+      }
     }
 
     // Always update particle effects and the torch flicker

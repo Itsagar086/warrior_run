@@ -556,4 +556,38 @@ function updatePlayer(dt) {
   }
 }
 
-export { makePlayer, switchLane, doJump, doSlide, updatePlayer };
+// Pranam (bowing) pose: the devotee kneels and bows deeply, hands joined in
+// prayer at the forehead. Used at the Ram Mandir gates before the ascension
+// choice appears.
+function animateBow(dt) {
+  if (!parts) return;
+  const rate = 6;
+  // Deep forward bend from the waist
+  parts.torso.rotation.x = approach(parts.torso.rotation.x, 0.95, rate, dt);
+  parts.torso.rotation.y = approach(parts.torso.rotation.y, 0, rate, dt);
+  parts.torso.rotation.z = approach(parts.torso.rotation.z, 0, rate, dt);
+  parts.torso.position.y = HIP_Y;
+
+  // Head bows with the torso
+  parts.head.rotation.x = approach(parts.head.rotation.x || 0, 0.4, rate, dt);
+  parts.head.rotation.y = approach(parts.head.rotation.y, 0, rate, dt);
+  parts.head.position.y = approach(parts.head.position.y, HEAD_Y - HIP_Y, rate, dt);
+
+  // Arms brought together in namaskar at chest / forehead height
+  parts.leftUpperArm.rotation.x = approach(parts.leftUpperArm.rotation.x, -0.85, rate, dt);
+  parts.rightUpperArm.rotation.x = approach(parts.rightUpperArm.rotation.x, -0.85, rate, dt);
+  parts.leftUpperArm.rotation.z = approach(parts.leftUpperArm.rotation.z, 0.35, rate, dt);
+  parts.rightUpperArm.rotation.z = approach(parts.rightUpperArm.rotation.z, -0.35, rate, dt);
+  parts.leftLowerArm.rotation.x = approach(parts.leftLowerArm.rotation.x, -1.6, rate, dt);
+  parts.rightLowerArm.rotation.x = approach(parts.rightLowerArm.rotation.x, -1.6, rate, dt);
+
+  // Knees bend into kneeling pose
+  parts.leftUpperLeg.rotation.x = approach(parts.leftUpperLeg.rotation.x, -0.6, rate, dt);
+  parts.rightUpperLeg.rotation.x = approach(parts.rightUpperLeg.rotation.x, -0.6, rate, dt);
+  parts.leftLowerLeg.rotation.x = approach(parts.leftLowerLeg.rotation.x, 1.1, rate, dt);
+  parts.rightLowerLeg.rotation.x = approach(parts.rightLowerLeg.rotation.x, 1.1, rate, dt);
+  parts.leftFoot.rotation.x = approach(parts.leftFoot.rotation.x, 0.5, rate, dt);
+  parts.rightFoot.rotation.x = approach(parts.rightFoot.rotation.x, 0.5, rate, dt);
+}
+
+export { makePlayer, switchLane, doJump, doSlide, updatePlayer, animateBow };

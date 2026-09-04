@@ -28,24 +28,24 @@ export function initGameOverScreens(root) {
   gameOverOverlay.innerHTML = `
     <div style="max-width: 480px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ff4500; border-radius: 20px; padding: 32px 28px; box-shadow: 0 0 35px rgba(255, 69, 0, 0.6);">
       <div style="font-size: 13px; letter-spacing: 3px; color: #ff8c2e; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        PILGRIMAGE INTERRUPTED
+        यात्रा अधूरी — YATRA ADHOORI
       </div>
       <h2 style="font-size: 30px; color: #fff5cc; margin: 0 0 16px; font-weight: 900;">
-        FALLEN ON THE SNAKE WAY
+        FALLEN ON THE SACRED PATH
       </h2>
       <div style="background: rgba(58, 47, 107, 0.5); border-radius: 12px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(201, 162, 75, 0.3);">
         <div style="font-size: 16px; color: #d6cfec; margin-bottom: 6px;">
           Punya Accrued: <b id="go-punya-val" style="color: #ffaa33; font-size: 20px;">0</b>
         </div>
         <div style="font-size: 16px; color: #d6cfec;">
-          Distance Reached: <b id="go-dist-val" style="color: #4de0c0; font-size: 20px;">0m</b> / 2000m
+          Yatra Covered: <b id="go-dist-val" style="color: #4de0c0; font-size: 20px;">0m</b> / 2000m
         </div>
         <div id="go-best-val" style="font-size: 13px; color: #a79ec4; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(201, 162, 75, 0.25);">
           Best: 0 punya
         </div>
       </div>
       <button id="btn-restart" style="background: linear-gradient(135deg, #ff8c2e, #c2410c); border: 2px solid #ffd700; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 12px 36px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 20px rgba(255,140,46,0.8);">
-        RETRY ASCENT ⚡
+        🙏 PUNAH YATRA — RESTART PILGRIMAGE 🙏
       </button>
     </div>
   `;
@@ -77,25 +77,25 @@ export function initGameOverScreens(root) {
   ascensionOverlay.innerHTML = `
     <div style="max-width: 520px; background: rgba(28, 32, 60, 0.96); border: 3px solid #ffd700; border-radius: 20px; padding: 34px 30px; box-shadow: 0 0 45px rgba(255, 215, 0, 0.45);">
       <div style="font-size: 13px; letter-spacing: 3px; color: #ffd700; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        THE GATES OF KAILASH
+        🙏 श्री राम मंदिर — THE SACRED GATES
       </div>
       <h2 style="font-size: 30px; color: #fff5cc; margin: 0 0 10px; font-weight: 900;">
-        \ud83c\udfd4\ufe0f THE SUMMIT STANDS BEFORE YOU
+        🕉️ RAM MANDIR STANDS BEFORE YOU
       </h2>
       <div style="font-size: 15px; color: #d6cfec; line-height: 1.55; margin-bottom: 10px;">
-        2000m walked. Punya earned: <b id="asc-punya-val" style="color:#ffaa33;">0</b>
+        2000m of sacred yatra walked. Punya earned: <b id="asc-punya-val" style="color:#ffaa33;">0</b>
       </div>
       <div style="font-size: 14px; color: #a79ec4; line-height: 1.5; margin-bottom: 22px;">
-        Ascend now and complete the pilgrimage \u2014 or walk on past the mountain,
+        Offer pranam and complete the darshan — or walk on past the mandir,
         where the path never ends, the way grows crueller every league, and all
         punya is doubled and deepens the further you dare.
       </div>
       <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
         <button id="btn-ascend" style="background: linear-gradient(135deg, #4de0c0, #207260); border: 2px solid #fff; color: #ffffff; font-size: 16px; font-weight: 900; letter-spacing: 1px; padding: 13px 26px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 22px rgba(77,224,192,0.7);">
-          \ud83c\udfd4\ufe0f ASCEND
+          🙏 DARSHAN — COMPLETE YATRA
         </button>
         <button id="btn-eternal" style="background: linear-gradient(135deg, #8a5cf6, #4c2894); border: 2px solid #ffd700; color: #ffffff; font-size: 16px; font-weight: 900; letter-spacing: 1px; padding: 13px 26px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 22px rgba(138,92,246,0.7);">
-          \ud83c\udf0c WALK THE ETERNAL PATH
+          🕉️ WALK THE ETERNAL PATH
         </button>
       </div>
     </div>
@@ -129,24 +129,24 @@ export function initGameOverScreens(root) {
   victoryOverlay.innerHTML = `
     <div style="max-width: 520px; background: rgba(32, 36, 63, 0.95); border: 3px solid #ffd700; border-radius: 20px; padding: 36px 30px; box-shadow: 0 0 45px rgba(77, 224, 192, 0.7);">
       <div style="font-size: 14px; letter-spacing: 3px; color: #4de0c0; text-transform: uppercase; font-weight: 800; margin-bottom: 8px;">
-        DIVINE ENLIGHTENMENT ACHIEVED
+        दर्शन सम्पूर्ण — DARSHAN COMPLETE
       </div>
       <h2 style="font-size: 32px; color: #fff5cc; margin: 0 0 16px; font-weight: 900; text-shadow: 0 0 16px #4de0c0;">
-        🕉️ MOUNT KAILASH REACHED! 🏔️
+        🙏 जय श्री राम — RAM MANDIR REACHED! 🕉️
       </h2>
       <p style="font-size: 15px; color: #e2dcfa; line-height: 1.6; margin-bottom: 20px;">
-        You have traversed all 2000 meters of the perilous Snake Way, vanquished the Asura hazards, and ascended to the sacred abode of Lord Shiva and Lord Vishnu!
+        You have traversed all 2000 meters of the sacred yatra, vanquished the Asura hazards, and received the divine darshan at the sacred Ram Mandir of Ayodhya!
       </p>
       <div style="background: rgba(58, 47, 107, 0.6); border-radius: 12px; padding: 16px; margin-bottom: 24px; border: 1px solid #c9a24b;">
         <div style="font-size: 18px; color: #ffffff;">
-          Final Sacred Punya: <b id="vic-punya-val" style="color: #ffd700; font-size: 24px;">0</b>
+          Sacred Punya Earned: <b id="vic-punya-val" style="color: #ffd700; font-size: 24px;">0</b>
         </div>
         <div id="vic-best-val" style="font-size: 13px; color: #a79ec4; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(201, 162, 75, 0.25);">
           Best: 0 punya
         </div>
       </div>
       <button id="btn-vic-restart" style="background: linear-gradient(135deg, #4de0c0, #207260); border: 2px solid #fff; color: #ffffff; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; padding: 14px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 0 25px rgba(77,224,192,0.8);">
-        ASCEND AGAIN 🕉️
+        🙏 PUNAH DARSHAN — WALK AGAIN 🕉️
       </button>
     </div>
   `;
